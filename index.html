@@ -78,6 +78,12 @@ input[type=number]{font-family:var(--font-data)}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px}
 .kpi .v{font:700 1.25rem/1.1 var(--font-data);color:var(--navy)}
 .kpi .l{font-size:.72rem;color:var(--ink-mid);margin-top:2px}
+.kpi{display:grid;grid-template-columns:30px 1fr;column-gap:8px;align-items:start}.kpi>*{grid-column:2}.kpi>.ico{grid-column:1;grid-row:1/span 3}
+.ico{width:26px;height:26px;fill:none;stroke:var(--accent);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-top:3px}
+.prio{display:grid;grid-template-columns:1fr 64px 52px;gap:2px 8px;align-items:center;font-size:.76rem;padding:3px 0;border-bottom:1px dashed var(--line)}
+.prio .bar{grid-column:1/4;height:6px;border-radius:3px;background:var(--line)}.prio .bar>i{display:block;height:100%;border-radius:3px}
+.tag{font:700 .64rem var(--font-ui);text-transform:uppercase;letter-spacing:.04em;border-radius:999px;padding:2px 7px;text-align:center}
+.tag.alta{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green)}.tag.media{background:color-mix(in srgb,var(--or) 18%,transparent);color:var(--or)}.tag.baja{background:var(--surface-alt);color:var(--ink-lo)}
 .kpi.full{grid-column:1/3}
 .kpi.dest{background:color-mix(in srgb,var(--accent) 7%,var(--surface));border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
 .kpi.dest .v{font-size:1.55rem}
@@ -140,7 +146,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
    </div>
    <div class="card">
     <p class="eyebrow">Red</p><h3>Líneas y estaciones</h3>
-    <p class="lead">Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa y la <b>sombra</b> bajo la línea activa muestra la prolongación sin quiebre (0°). Clic sobre una línea inserta una estación; clic derecho borra el último punto mientras dibujas.</p>
+    <p class="lead">Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa y la <b>sombra</b> bajo la línea activa muestra la prolongación sin quiebre (0°). Clic sobre una línea inserta una estación; <b>doble clic sobre una estación la alinea a 0°</b>; clic derecho borra el último punto mientras dibujas.</p>
     <div class="lista" id="listaLineas"></div>
     <div class="row"><button class="b" id="bNuevaLinea">+ Línea</button><button class="b" id="bAgregar">+ Estaciones (clic en mapa)</button></div>
     <div id="listaEst"></div>
@@ -162,6 +168,8 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
   <!-- ============ OUTPUTS ============ -->
   <aside class="col der" aria-label="Resultados">
    <div class="card"><p class="eyebrow">Resultados</p><h3 id="tituloRes">Resumen del trazado</h3><div class="kpis" id="kpis"></div></div>
+   <div class="card"><p class="eyebrow">Prioridad</p><h3>Población potencial por estación</h3>
+    <p class="lead">Personas dentro de la cobertura de cada estación, aunque otra les quede mejor. Prioridad relativa a la estación de mayor población: alta ≥ 66 %, media ≥ 33 %.</p><div id="tPrio"></div></div>
    <div class="card"><p class="eyebrow">Inversión</p><h3>Presupuesto estimado</h3>
     <p class="lead">Proporcional a las partidas del anteproyecto P178 (UF dic-2024), recalculado con el largo, las estaciones y los ángulos del trazado.</p><div id="tInv"></div></div>
    <div class="card"><p class="eyebrow">Tiempos</p><h3>Puerta a puerta al centro</h3>
@@ -177,7 +185,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
      <p><b>Sobrevuelo.</b> Faja de ancho fijo bajo cada tramo y huella rectangular por estación. Viviendas por edificio: huella × pisos ÷ m² por vivienda del lote (multivivienda) o roles del lote (casas). Contraste con la DGC sobre el anteproyecto: 61 vs 64 viviendas en T1, 69 vs 74 terrenos en T2.</p>
      <p><b>Valores.</b> Medianas de UF/m² de escrituras SII F2890 2015–2025 del área (suelo: casas; cota baja: sitios eriazos). Casa afectada → lote completo (≤ 2.000 m²); condominio → cuota de suelo; resto → superficie intersectada.</p>
      <p><b>Inversión.</b> Costos unitarios del presupuesto del anteproyecto P178: electromecánica por tipo de estación, torres y cables por metro, cabinas por metro y estación; arquitectura, instalaciones eléctricas y obras urbanas por estación; recargo por ángulo según P246 Cuadro 1.2-5; GG y U 35 %, IVA 19 %.</p>
-     <p><b>Corte.</b> Copernicus GLO-30 (≈ 3 m bajo las cotas del P178). El cable se dibuja como cuerda recta entre estaciones; en naranja, donde el gálibo no alcanza y harían falta torres.</p>
+     <p><b>Rasante y torres.</b> Terreno Copernicus GLO-30 (≈ 3 m bajo las cotas del P178). Desde la cuerda recta entre estaciones se insertan apoyos en el punto de mayor déficit de gálibo, con la cima a gálibo sobre el terreno, hasta que el cable no baja del gálibo; luego se agregan apoyos donde el vano supera el máximo. Sin catenaria. Cada torre se valoriza a 5.374 UF (166.590 UF / 31 torres del P178).</p>
     </details>
     <p class="nota" id="fuentes"></p></div>
   </aside>
@@ -282,7 +290,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
 </script>
 <script>
 "use strict";
-const VERSION = "202610021645";
+const VERSION = "202610021658";
 let D=null, PID=null, INDICE=null;
 const $=id=>document.getElementById(id);
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -309,7 +317,9 @@ const P={
  h_est:{v:8,l:"Cable sobre estación (m)",g:"pCost",n:"supuesto"},
  galibo:{v:10,l:"Gálibo mínimo (m)",g:"pCost",n:"supuesto"},
  suelo:{v:"central",l:"Valor del suelo",g:"pCost",t:"sel",o:[["central","Central (casas)"],["bajo","Bajo (eriazos)"]]},
- torres_km:{v:7.4,l:"Torres por km",g:"pCost",n:"P178: 31 torres / 4,18 km"},
+ vano_max:{v:320,l:"Vano máximo entre apoyos (m)",g:"pCost",n:"P178: vano mayor 310 m"},
+ vano_min:{v:0,l:"Vano mínimo entre apoyos (m, 0 = sin fusión)",g:"pCost",n:"P178 tiene torres a 10-19 m (P9-P10, P17-P18); con 0 la rasante da 30 torres vs 31"},
+ h_torre_max:{v:60,l:"Altura máx. de torre (m)",g:"pCost",n:"P178: torre mayor 42 m"},
  uf_clp:{v:38416.69,l:"Valor UF ($)",g:"pCost",n:"31-12-2024 (P178)"}
 };
 const V=k=>+P[k].v;
@@ -317,7 +327,7 @@ const V=k=>+P[k].v;
 // =============================================================== costos unitarios (P178, UF costo directo)
 // Electromecánica (14_P178-TEL_TEL.xlsx): por línea y por estación; arquitectura (05_ARQ): por estación;
 // eléctricas (15_ELEC): por estación-línea; obras urbanas (Cuadro 1.2-11 ítems 1-3, 6-13): por estación física.
-const CU={motriz:116183,retorno:67580,intermedia:62178,garaje:45851,torre_km:39885/7.4,cable_com_m:4.72,cable_port_m:8.04,
+const CU={motriz:116183,retorno:67580,intermedia:62178,garaje:45851,torre:166590/31,cable_com_m:4.72,cable_port_m:8.04,
  cab_m:39.58,cab_est:20030,herr_base:18624,herr_m:7.13,montaje:0.0622,
  arq_extremo:44682,arq_intermedia:42733,arq_transbordo:67701,estructura_est:1756,elec_est_linea:16154,urbanas_est:36490,gg:0.35,iva:0.19};
 // recargo por ángulo (P246 Cuadro 1.2-5, punto medio del rango) sobre electromecánica y arquitectura de la estación
@@ -369,6 +379,46 @@ const anguloEn=(l,i)=>{if(i<=0||i>=l.est.length-1)return 0;const a=toXY(l.est[i-
 const claseAng=a=>Math.abs(a)>10?"bad":Math.abs(a)>V("ang_lim")?"warn":"";
 const radioDe=e=>e.r||V("radio");
 
+// =============================================================== rasante
+// El cable no puede quedar bajo la topografía: entre dos estaciones se parte de la cuerda recta y se insertan
+// apoyos donde el gálibo no alcanza (en el punto de mayor déficit, con la cima a gálibo sobre el terreno) y
+// luego donde el vano excede el máximo. Sin catenaria: el cable entre apoyos es recto.
+const cacheRas=new Map();
+function rasante(l){
+ const key=JSON.stringify(l.est.map(e=>[e.lon,e.lat]))+[P.h_est.v,P.galibo.v,P.vano_max.v,P.vano_min.v,P.est_largo.v].join();
+ if(cacheRas.has(key))return cacheRas.get(key);
+ const pts=[],estX=[],sop=[];let acum=0;
+ for(let i=0;i<l.est.length-1;i++){const a=toXY(l.est[i].lon,l.est[i].lat),b=toXY(l.est[i+1].lon,l.est[i+1].lat),Lm=dist(a,b),n=Math.max(1,Math.ceil(Lm/10));
+  estX.push([acum,l.est[i]]);for(let k=0;k<n;k++){const f=k/n,q=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f],ll=toLL(...q);pts.push([acum+Lm*f,cota(ll[0],ll[1]),q,i]);}acum+=Lm;}
+ const u=l.est[l.est.length-1];estX.push([acum,u]);pts.push([acum,cota(u.lon,u.lat),toXY(u.lon,u.lat),l.est.length-2]);
+ const g=V("galibo"),he=V("h_est");
+ for(let i=0;i<estX.length-1;i++){
+  const x0=estX[i][0],x1=estX[i+1][0],dz=V("est_largo")/2+10,seg=pts.filter(p=>p[0]>x0+dz&&p[0]<x1-dz);   // la zona de estación no exige gálibo: el cable baja al andén
+  const ap=[[x0,cota(estX[i][1].lon,estX[i][1].lat)+he,"est"],[x1,cota(estX[i+1][1].lon,estX[i+1][1].lat)+he,"est"]];
+  const refinar=(A,B)=>{let peor=null;for(const p of seg){if(p[0]<=A[0]||p[0]>=B[0])continue;const zc=A[1]+(B[1]-A[1])*(p[0]-A[0])/(B[0]-A[0]),def=p[1]+g-zc;if(def>.05&&(!peor||def>peor.def))peor={p,def};}
+   if(!peor)return [];const T=[peor.p[0],peor.p[1]+g,"torre",peor.p[1]];return [...refinar(A,T),T,...refinar(T,B)];};
+  let cad=[ap[0],...refinar(ap[0],ap[1]),ap[1]];
+  // fusiona apoyos más cercanos que el vano mínimo en uno más alto, y vuelve a exigir gálibo a ambos lados
+  const deficit=(A,B)=>{let m=0;for(const p of seg){if(p[0]<=A[0]||p[0]>=B[0])continue;const zc=A[1]+(B[1]-A[1])*(p[0]-A[0])/(B[0]-A[0]);m=Math.max(m,p[1]+g-zc);}return m;};
+  for(let it=0;it<30&&V("vano_min")>0;it++){let k=-1;for(let q=1;q<cad.length-2;q++)if(cad[q+1][0]-cad[q][0]<V("vano_min")){k=q;break;}
+   if(k<0){for(let q=1;q<cad.length-1;q++){if(cad[q][0]-cad[q-1][0]<V("vano_min")&&cad[q-1][2]==="est"&&q+1<cad.length&&cad[q+1][2]!=="est"){k=q;break;}}if(k<0)break;cad.splice(k,1);continue;}
+   const a=cad[k],b=cad[k+1],T=a[1]>=b[1]?[a[0],a[1],"torre",a[3]]:[b[0],b[1],"torre",b[3]];
+   const pre=cad[k-1],pos=cad[k+2];for(let r=0;r<40;r++){const d=Math.max(deficit(pre,T),deficit(T,pos));if(d<=.05)break;T[1]+=d+.5;}
+   cad.splice(k,2,T);
+   const nuevo=[cad[0]];for(let q=1;q<cad.length;q++){nuevo.push(...refinar(nuevo[nuevo.length-1],cad[q]),cad[q]);}cad=nuevo;}
+  // vanos largos: apoyos intermedios sobre la misma recta (no cambian la rasante)
+  const out=[cad[0]];for(let k=1;k<cad.length;k++){const A=out[out.length-1],B=cad[k],nv=Math.ceil((B[0]-A[0])/V("vano_max"));
+   for(let j=1;j<nv;j++){const x=A[0]+(B[0]-A[0])*j/nv,zt=terrenoEn(pts,x);out.push([x,A[1]+(B[1]-A[1])*j/nv,"torre",zt]);}out.push(B);}
+  out.slice(1,-1).forEach(t=>sop.push({x:t[0],top:t[1],ter:t[3],h:t[1]-t[3],tramo:i}));
+  if(i===0)sop.push({x:x0,top:ap[0][1],est:true});sop.push({x:x1,top:ap[1][1],est:true});
+ }
+ sop.sort((a,b)=>a.x-b.x);
+ const cz=x=>{for(let k=0;k<sop.length-1;k++)if(x<=sop[k+1].x){const f=(x-sop[k].x)/((sop[k+1].x-sop[k].x)||1);return sop[k].top+(sop[k+1].top-sop[k].top)*f;}return sop[sop.length-1].top;};
+ const torres=sop.filter(t=>!t.est);
+ const res={pts,estX,acum,sop,torres,cz,hMax:torres.reduce((m,t)=>Math.max(m,t.h),0),altas:torres.filter(t=>t.h>V("h_torre_max")).length};
+ cacheRas.set(key,res);return res;}
+function terrenoEn(pts,x){let b=pts[0];for(const p of pts)if(Math.abs(p[0]-x)<Math.abs(b[0]-x))b=p;return b[1];}
+
 // =============================================================== cálculo
 const cacheIso=new Map();
 function iso(e){const k=[e.lon.toFixed(6),e.lat.toFixed(6),P.tobler.v,P.v_cam.v].join();if(!cacheIso.has(k))cacheIso.set(k,dijkstra(toXY(e.lon,e.lat),40*60));return cacheIso.get(k);}
@@ -388,12 +438,13 @@ function calcular(){
  for(let k=0;k<n;k++){let u=-1;for(let i=0;i<n;i++)if(!vis[i]&&(u<0||tv[i]<tv[u]))u=i;if(u<0||tv[u]===Infinity)break;vis[u]=true;
   for(const [v,t,esT] of adj[u]){const nt=tv[u]+t;if(nt<tv[v]){tv[v]=nt;tb[v]=tb[u]+(esT?t:0);}}}
  const egr=R.est[dest].egreso;
- R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr,pob:0,hog:0,accSum:0}));
+ R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr,pob:0,hog:0,accSum:0,pobPot:0}));
  const isos=R.est.map(s=>iso(s.e));
  D.manzanas.forEach((m,mi)=>{let best=null;const mxy=toXY(m[0],m[1]);
   R.est.forEach((s,si)=>{const r=radioDe(s.e);let acc=isos[si][m[6]]+m[7]/V("v_cam");
    if(P.cob_modo.v==="radio"){const d=dist(mxy,s.xy);if(d>r)return;if(!isFinite(acc))acc=d*1.3/V("v_cam");}
    else if(!(acc<=r/V("v_cam")))return;
+   s.pobPot+=m[2]||0;   // población potencial: dentro de su cobertura, aunque otra estación le quede mejor
    if(!isFinite(s.viaje))return;const tot=acc+s.espera+s.viaje+s.transb+s.egr;if(!best||tot<best.tot)best={si,acc,tot};});
   if(best){R.mz[mi]=best;const s=R.est[best.si],p=m[2]||0;s.pob+=p;s.hog+=m[3]||0;s.accSum+=best.acc*p;}});
  return R;}
@@ -425,21 +476,21 @@ function valorizar(O){const vs=D.valores.por_tipologia,q=(t,c)=>vs[t]&&vs[t][c]?
 function inversion(R,VAL){
  // estaciones físicas: las de distinta línea a < 80 m son una estación de transbordo
  const fis=[];R.est.forEach((s,i)=>{const f=fis.find(f=>f.some(j=>dist(R.est[j].xy,s.xy)<80&&R.est[j].li!==s.li));if(f)f.push(i);else fis.push([i]);});
- const c={em:0,torres:0,cables:0,cabinas:0,otros_em:0,montaje:0,arq:0,estr:0,elec:0,urb:0,recargo:0};
+ const c={em:0,torres:0,cables:0,cabinas:0,otros_em:0,montaje:0,arq:0,estr:0,elec:0,urb:0,recargo:0};let nTor=0;
  S.lineas.forEach((l,li)=>{const n=l.est.length;if(n<2)return;const L=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0);
   const ang=l.est.map((_,i)=>anguloEn(l,i));
   const emEst=[CU.motriz,...Array(n-2).fill(CU.intermedia),CU.retorno];
   emEst.forEach((v,i)=>{c.em+=v;c.recargo+=v*(i>0&&i<n-1?recargoAng(ang[i]):0);});
-  c.otros_em+=CU.garaje+CU.herr_base+CU.herr_m*L;c.torres+=CU.torre_km*V("torres_km")*L/1000;c.cables+=(CU.cable_com_m+CU.cable_port_m)*L;c.cabinas+=CU.cab_m*L+CU.cab_est*n;
+  c.otros_em+=CU.garaje+CU.herr_base+CU.herr_m*L;const ras=rasante(l);c.torres+=CU.torre*ras.torres.length;nTor+=ras.torres.length;c.cables+=(CU.cable_com_m+CU.cable_port_m)*L;c.cabinas+=CU.cab_m*L+CU.cab_est*n;
   c.elec+=CU.elec_est_linea*n;});
  c.montaje=CU.montaje*(c.em+c.recargo+c.otros_em+c.torres+c.cables+c.cabinas);
  fis.forEach(f=>{const s=R.est[f[0]],l=S.lineas[s.li],extremo=f.every(j=>{const t=R.est[j];return t.ei===0||t.ei===S.lineas[t.li].est.length-1;});
   let arq=f.length>1?CU.arq_transbordo:(extremo?CU.arq_extremo:CU.arq_intermedia);const a=f.length>1?0:anguloEn(l,s.ei);c.recargo+=arq*recargoAng(a)*(a?1:0);c.arq+=arq;c.estr+=CU.estructura_est;c.urb+=CU.urbanas_est;});
  const cd=Object.values(c).reduce((s,v)=>s+v,0),gg=cd*CU.gg,iva=(cd+gg)*CU.iva;
- return {c,cd,gg,iva,sinExp:cd+gg+iva,E1:cd+gg+iva+VAL.E1.uf,E2:cd+gg+iva+VAL.E2.uf,nFis:fis.length};}
+ return {c,cd,gg,iva,sinExp:cd+gg+iva,E1:cd+gg+iva+VAL.E1.uf,E2:cd+gg+iva+VAL.E2.uf,nFis:fis.length,nTor};}
 
 // =============================================================== mapa
-const map=L.map("map",{preferCanvas:true,zoomControl:true});
+const map=L.map("map",{preferCanvas:true,zoomControl:true,doubleClickZoom:false});
 const bases={mapa:L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap",className:"tesela-mapa"}),
  sat:L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri World Imagery"})};
 const etiquetas=L.layerGroup([L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,opacity:.8}),
@@ -476,6 +527,11 @@ function dibujarBaseProyecto(){capArea.clearLayers();capMz.clearLayers();capEd.c
 let mzPoly=[];
 function tipMz(i){const m=D.manzanas[i],a=R&&R.mz[i];return `Manzana · ${fmt(m[2])} personas · ${fmt(m[3])} hogares`+(a?`<br>Estación ${R.est[a.si].e.nombre} · caminata ${fmt(a.acc/60,1)} min · total ${fmt(a.tot/60,1)} min`:"<br>Fuera de cobertura");}
 
+// doble clic: proyecta la estación sobre la recta de sus vecinas (intermedia) o sobre la prolongación del tramo previo (extremo)
+function alinear(l,i){const n=l.est.length;if(n<3)return;let a,b;
+ if(i>0&&i<n-1){a=l.est[i-1];b=l.est[i+1];}else if(i===n-1){a=l.est[n-3];b=l.est[n-2];}else{a=l.est[2];b=l.est[1];}
+ const A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),P0=toXY(l.est[i].lon,l.est[i].lat),dx=B[0]-A[0],dy=B[1]-A[1],t=((P0[0]-A[0])*dx+(P0[1]-A[1])*dy)/(dx*dx+dy*dy||1);
+ const q=toLL(A[0]+t*dx,A[1]+t*dy);l.est[i].lon=q[0];l.est[i].lat=q[1];render();}
 function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();capGuia.clearLayers();const C=COLS();
  const la=S.lineas[S.activa];if(la&&la.est.length>=2){const c=C[S.activa%C.length],LG=1500;
   const rayo=(a,b)=>{const A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),dx=B[0]-A[0],dy=B[1]-A[1],Ln=Math.hypot(dx,dy)||1,F=toLL(B[0]+dx/Ln*LG,B[1]+dy/Ln*LG);
@@ -490,9 +546,10 @@ function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();capGuia.clear
    pl.bindTooltip("Clic para insertar una estación aquí",{sticky:true});}
   l.est.forEach((e,ei)=>{
    const m=L.marker([e.lat,e.lon],{draggable:true,keyboard:false,icon:L.divIcon({className:"",html:`<div style="width:16px;height:16px;border-radius:50%;background:${c};border:3px solid ${css("--surface")};box-shadow:0 0 0 1.5px ${c}"></div>`,iconSize:[16,16],iconAnchor:[8,8]})}).addTo(capLin);
-   m.bindTooltip(e.nombre,{permanent:true,direction:"right",className:"etq",offset:[10,0]});
+   m.bindTooltip(e.nombre,{permanent:true,direction:"right",className:"etq",offset:[10,0]});m.getElement&&0;
    m.on("drag",ev=>{const p=ev.target.getLatLng();e.lat=p.lat;e.lon=p.lng;});m.on("dragend",()=>render());
    m.on("click",()=>{S.activa=li;render();});
+   m.on("dblclick",ev=>{L.DomEvent.stop(ev);alinear(l,ei);});
    const a=anguloEn(l,ei);if(ei>0&&ei<l.est.length-1){const k=claseAng(a);
     L.marker([e.lat,e.lon],{interactive:false,icon:L.divIcon({className:"",html:`<span class="angtag ${k}">∠ ${fmt(Math.abs(a),0)}°</span>`,iconSize:[52,18],iconAnchor:[26,-12]})}).addTo(capLin);}
    // círculo de cobertura con manilla para cambiar el radio
@@ -519,6 +576,15 @@ function pintarMapa(){const C=COLS(),sat=baseActual==="sat";
   <i style="background:${css("--ink")};opacity:.3"></i>Huella de estación<br><i style="background:${css("--viv")}"></i>Vivienda afectada<br><i style="background:${css("--noviv")}"></i>Otra edificación<br>
   <i style="background:currentColor;opacity:.25;height:6px;vertical-align:1px"></i>Sombra: prolongación sin quiebre (0°)<br><b style="margin-top:4px">Ángulo en estación</b><span class="angtag">∠ ≤ ${V("ang_lim")}°</span> <span class="angtag warn">&gt; ${V("ang_lim")}°</span> <span class="angtag bad">&gt; 10°</span></details>`;}
 
+const IC={
+ pers:'<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a7 7 0 0 1 14 0v1M17 11a3 3 0 1 0 0-6M22 21v-1a5 5 0 0 0-4-4.9"/>',
+ plata:'<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.6-1-1.7-1.5-3-1.5-1.7 0-3 .9-3 2s1.3 1.7 3 2 3 .9 3 2-1.3 2-3 2c-1.3 0-2.4-.5-3-1.5M12 6v2M12 16v2"/>',
+ regla:'<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/>',
+ angulo:'<path d="M4 20h16M4 20 16 6"/><path d="M10 20a6 6 0 0 0-1.8-4.3"/>',
+ casa:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>',
+ terreno:'<path d="M3 20h18M5 20l4-9 3 5 3-3 4 7"/><circle cx="16" cy="6" r="2"/>',
+ tren:'<path d="M2 5 22 3"/><rect x="7" y="8" width="10" height="9" rx="2"/><path d="M12 4v4M9 13h6"/>'};
+const ico=(k)=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
 // =============================================================== paneles
 function armarParams(){for(const g of ["pCob","pOp","pCost"])$(g).innerHTML="";
  for(const [k,p] of Object.entries(P)){const lab=document.createElement("label");lab.textContent=p.l;lab.title=p.n||"";lab.htmlFor="p_"+k;$(p.g).appendChild(lab);
@@ -549,20 +615,26 @@ function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog
  const ang=[];S.lineas.forEach(l=>l.est.forEach((e,i)=>{const a=Math.abs(anguloEn(l,i));if(i>0&&i<l.est.length-1&&a>V("ang_lim"))ang.push(`${e.nombre} ${fmt(a,0)}°`);}));
  const ED=[0,0,0,0,0,0,0];D.manzanas.forEach((m,i)=>{if(R.mz[i]&&m[9])m[9].forEach((v,k)=>ED[k]+=v||0);});const edT=ED.reduce((a,b)=>a+b,0);
  const ET=["0–5","6–13","14–17","18–24","25–44","45–59","60 y más"];
- $("kpis").innerHTML=`<div class="kpi full dest"><div class="v">${fmt(pob)}</div><div class="l">personas beneficiadas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div>
+ $("kpis").innerHTML=`<div class="kpi full dest">${ico("pers")}<div class="v">${fmt(pob)}</div><div class="l">personas beneficiadas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div>
    <details class="desp"><summary>Por tramo de edad</summary><table><tr><th>Edad</th><th>Personas</th><th>%</th></tr>${ET.map((t,k)=>`<tr><td>${t} años</td><td>${fmt(ED[k])}</td><td>${fmt(edT?100*ED[k]/edT:0,1)}</td></tr>`).join("")}</table><div class="nota">Censo 2024 por manzana; manzanas asignadas a alguna estación.</div></details></div>
-  <div class="kpi full dest"><div class="v">${fmt(INV.E2)} UF</div><div class="l">inversión total estimada (con expropiación E2) · ≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} · con E1: ${fmt(INV.E1)} UF</div></div>
-  <div class="kpi"><div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>l.est.length>1).length} línea(s) · ${R.est.length} estaciones</div></div>
-  <div class="kpi"><div class="v ${ang.length?"warn":""}">${ang.length}</div><div class="l">quiebres &gt; ${V("ang_lim")}°${ang.length?": "+ang.join(", "):""}</div></div>
-  <div class="kpi"><div class="v">${fmt(VAL.E1.viv)}</div><div class="l">viviendas bajo la faja · ≈ ${fmt(VAL.E1.pers)} personas</div></div>
-  <div class="kpi"><div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>`;
+  <div class="kpi full dest">${ico("plata")}<div class="v">${fmt(INV.E2)} UF</div><div class="l">inversión total estimada (con expropiación E2) · ≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} · con E1: ${fmt(INV.E1)} UF</div></div>
+  <div class="kpi">${ico("regla")}<div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>l.est.length>1).length} línea(s) · ${R.est.length} estaciones</div></div>
+  <div class="kpi">${ico("angulo")}<div class="v ${ang.length?"warn":""}">${ang.length}</div><div class="l">quiebres &gt; ${V("ang_lim")}°${ang.length?": "+ang.join(", "):""}</div></div>
+  <div class="kpi">${ico("casa")}<div class="v">${fmt(VAL.E1.viv)}</div><div class="l">viviendas bajo la faja · ≈ ${fmt(VAL.E1.pers)} personas</div></div>
+  <div class="kpi">${ico("terreno")}<div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>
+  <div class="kpi full">${ico("tren")}<div class="v">${fmt(INV.nTor)} torres</div><div class="l">en la rasante (gálibo ≥ ${V("galibo")} m, vano ≤ ${V("vano_max")} m)${S.lineas.some(l=>l.est.length>1&&rasante(l).altas)?' · <span class="bad">hay torres sobre la altura máxima</span>':""}</div></div>`;
  let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th></tr>`;
  R.est.forEach((s,i)=>{const acc=s.pob?s.accSum/s.pob:null,tot=acc==null?null:acc+s.espera+s.viaje+s.transb+s.egr;
   h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${i===R.dest?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
  $("tTiempos").innerHTML=h+"</table>";
- h=`<table><tr><th>Tramo</th><th>Planta m</th><th>Inclin. m</th><th>Desnivel</th><th>Min</th></tr>`;
- R.tramos.forEach(t=>{const l=S.lineas[t.li];h+=`<tr><td>${l.est[t.i].nombre} → ${l.est[t.i+1].nombre}</td><td>${fmt(t.L)}</td><td>${fmt(t.Li)}</td><td>${fmt(t.dz)} m</td><td>${fmt(t.t/60,1)}</td></tr>`;});
- S.lineas.forEach((l,li)=>{if(l.est.length<2)return;const tt=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.t,0);h+=`<tr class="tot"><td>${l.nombre}</td><td>${fmt(R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0))}</td><td></td><td></td><td>${fmt(tt/60,1)}</td></tr>`;});
+ const mx=Math.max(1,...R.est.map(s=>s.pobPot)),orden=R.est.map((s,i)=>[s,i]).sort((a,b)=>b[0].pobPot-a[0].pobPot);
+ $("tPrio").innerHTML=orden.map(([s],k)=>{const r=s.pobPot/mx,cl=r>=.66?"alta":r>=.33?"media":"baja";
+  return `<div class="prio"><span><b class="num">${k+1}.</b> ${s.e.nombre}</span><span class="num" style="text-align:right">${fmt(s.pobPot)}</span><span class="tag ${cl}">${cl}</span>
+   <div class="bar"><i style="width:${100*r}%;background:${C[s.li%C.length]}"></i></div></div>`;}).join("")+
+  `<div class="nota">Exclusiva (asignada por menor tiempo al centro): ${R.est.map(s=>`${s.e.nombre} ${fmt(s.pob)}`).join(" · ")}</div>`;
+ h=`<table><tr><th>Tramo</th><th>Planta m</th><th>Inclin. m</th><th>Desnivel</th><th>Torres</th><th>Min</th></tr>`;
+ R.tramos.forEach(t=>{const l=S.lineas[t.li],nt=rasante(l).torres.filter(x=>x.tramo===t.i).length;h+=`<tr><td>${l.est[t.i].nombre} → ${l.est[t.i+1].nombre}</td><td>${fmt(t.L)}</td><td>${fmt(t.Li)}</td><td>${fmt(t.dz)} m</td><td>${nt}</td><td>${fmt(t.t/60,1)}</td></tr>`;});
+ S.lineas.forEach((l,li)=>{if(l.est.length<2)return;const tt=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.t,0);h+=`<tr class="tot"><td>${l.nombre}</td><td>${fmt(R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0))}</td><td></td><td></td><td>${rasante(l).torres.length}</td><td>${fmt(tt/60,1)}</td></tr>`;});
  $("tTramos").innerHTML=h+"</table>";
  const E1=VAL.E1,E2=VAL.E2,f=(t,a,b,cl="")=>`<tr class="${cl}"><td>${t}</td><td>${a}</td><td>${b}</td></tr>`;
  $("tExp").innerHTML=`<table><tr><th></th><th>E1</th><th>E2</th></tr>`+f("Edificios afectados",fmt(E1.ed),fmt(E2.ed))+f("Viviendas",fmt(E1.viv),fmt(E2.viv))+f("Personas (≈)",fmt(E1.pers),fmt(E2.pers))+
@@ -572,7 +644,7 @@ function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog
  $("tInv").innerHTML=`<div class="total"><span class="l">Total con expropiación E2</span><span class="v">${fmt(INV.E2)} UF</span></div>
   <div class="total"><span class="l">Total con expropiación E1</span><span class="v" style="font-size:1.05rem">${fmt(INV.E1)} UF</span></div>
   <div class="nota">≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} (E2) · MM$ ${fmt(INV.E1*V("uf_clp")/1e6)} (E1) · ${INV.nFis} estaciones físicas</div>
-  <details class="desp"><summary>Desglose por partida</summary><table><tr><th>Partida</th><th>UF</th><th>%</th></tr>`+g("Estaciones electromecánicas",c.em)+g("Recargo por ángulos",c.recargo)+g("Torres",c.torres)+g("Cables",c.cables)+g("Cabinas",c.cabinas)+
+  <details class="desp"><summary>Desglose por partida</summary><table><tr><th>Partida</th><th>UF</th><th>%</th></tr>`+g("Estaciones electromecánicas",c.em)+g("Recargo por ángulos",c.recargo)+g(`Torres (${INV.nTor} de la rasante)`,c.torres)+g("Cables",c.cables)+g("Cabinas",c.cabinas)+
   g("Garaje, repuestos y rescate",c.otros_em)+g("Montaje",c.montaje)+g("Arquitectura de estaciones",c.arq)+g("Estructuras",c.estr)+g("Instalaciones eléctricas",c.elec)+g("Obras urbanas complementarias",c.urb)+
   g("Costo directo",INV.cd,"tot")+`<tr><td>GG y utilidades (35 %)</td><td>${fmt(INV.gg)}</td><td></td></tr><tr><td>IVA (19 %)</td><td>${fmt(INV.iva)}</td><td></td></tr>
   <tr class="tot"><td>Total sin expropiación</td><td>${fmt(INV.sinExp)}</td><td></td></tr><tr><td>Expropiación E2</td><td>${fmt(VAL.E2.uf)}</td><td></td></tr><tr><td>Expropiación E1</td><td>${fmt(VAL.E1.uf)}</td><td></td></tr></table>
@@ -582,27 +654,24 @@ function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog
 // =============================================================== corte
 function perfil(){const svg=$("svgPerfil"),l=S.lineas[S.activa];svg.innerHTML="";
  if(!l||l.est.length<2){$("perfilTit").textContent="Corte topográfico · la línea activa necesita al menos dos estaciones";return;}
- const pts=[],estX=[];let acum=0;
- for(let i=0;i<l.est.length-1;i++){const a=toXY(l.est[i].lon,l.est[i].lat),b=toXY(l.est[i+1].lon,l.est[i+1].lat),Lm=dist(a,b),n=Math.max(1,Math.ceil(Lm/10));estX.push([acum,l.est[i]]);
-  for(let k=0;k<n;k++){const f=k/n,p=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f],ll=toLL(...p);pts.push([acum+Lm*f,cota(ll[0],ll[1]),p]);}acum+=Lm;}
- const u=l.est[l.est.length-1];estX.push([acum,u]);pts.push([acum,cota(u.lon,u.lat),toXY(u.lon,u.lat)]);
- const zc=estX.map(([x,e])=>[x,cota(e.lon,e.lat)+V("h_est")]);
- const cable=x=>{for(let i=0;i<zc.length-1;i++)if(x<=zc[i+1][0]){const f=(x-zc[i][0])/((zc[i+1][0]-zc[i][0])||1);return zc[i][1]+(zc[i+1][1]-zc[i][1])*f;}return zc[zc.length-1][1];};
+ const ra=rasante(l),{pts,estX,acum,sop,torres}=ra;
  const edf=[];O.ed.forEach((o,i)=>{if(!o.faja)return;const e=D.edificaciones[i],c=toXY(e[0][0][0][0],e[0][0][0][1]);let best=null;for(const p of pts){const d=dist(p[2],c);if(!best||d<best.d)best={d,x:p[0],z:p[1]};}
   if(best&&best.d<40)edf.push([best.x,best.z,(e[4]||Math.max(1,Math.round((e[3]||0)/(e[6]||1))))*2.7,e[2]>0]);});
- const zmin=Math.min(...pts.map(p=>p[1]))-5,zmax=Math.max(...pts.map(p=>p[1]),...zc.map(c=>c[1]))+15;
+ const zmin=Math.min(...pts.map(p=>p[1]))-5,zmax=Math.max(...pts.map(p=>p[1]),...sop.map(t=>t.top))+15;
  const W=svg.clientWidth||800,H=svg.clientHeight||180,ml=40,mr=10,mt=16,mb=18,X=x=>ml+(W-ml-mr)*x/acum,Y=z=>mt+(H-mt-mb)*(1-(z-zmin)/(zmax-zmin));
- svg.setAttribute("viewBox",`0 0 ${W} ${H}`);let s="";const ink=css("--ink"),lo=css("--ink-lo"),ln=css("--line");
+ svg.setAttribute("viewBox",`0 0 ${W} ${H}`);let s="";const ink=css("--ink"),lo=css("--ink-lo"),ln=css("--line"),col=COLS()[S.activa%5];
  const paso=zmax-zmin>150?50:25;for(let z=Math.ceil(zmin/paso)*paso;z<=zmax;z+=paso)s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(z)}" y2="${Y(z)}" stroke="${ln}"/><text x="${ml-4}" y="${Y(z)+3}" font-size="10" text-anchor="end" fill="${lo}" font-family="IBM Plex Mono">${z}</text>`;
  const px=acum>3000?500:250;for(let x=0;x<=acum;x+=px)s+=`<text x="${X(x)}" y="${H-4}" font-size="10" text-anchor="middle" fill="${lo}" font-family="IBM Plex Mono">${x} m</text>`;
+ // banda de gálibo bajo la rasante
+ s+=`<path d="M${X(0)},${Y(ra.cz(0)-V("galibo"))} ${pts.map(p=>`L${X(p[0])},${Y(ra.cz(p[0])-V("galibo"))}`).join(" ")} ${pts.slice().reverse().map(p=>`L${X(p[0])},${Y(ra.cz(p[0]))}`).join(" ")} Z" fill="${col}" fill-opacity=".08"/>`;
  s+=`<path d="M${X(0)},${Y(zmin)} ${pts.map(p=>`L${X(p[0])},${Y(p[1])}`).join(" ")} L${X(acum)},${Y(zmin)} Z" fill="${css("--terreno")}" fill-opacity=".25" stroke="${css("--terreno")}" stroke-width="1.2"/>`;
  edf.forEach(([x,z,h,hab])=>s+=`<rect x="${X(x)-2}" y="${Y(z+h)}" width="4" height="${Math.max(1,Y(z)-Y(z+h))}" fill="${hab?css("--viv"):css("--noviv")}"/>`);
- let malos=0;pts.forEach(p=>{if(cable(p[0])-p[1]<V("galibo")){malos++;s+=`<line x1="${X(p[0])}" x2="${X(p[0])}" y1="${Y(p[1])}" y2="${Y(cable(p[0]))}" stroke="${css("--noviv")}" stroke-width="2" opacity=".55"/>`;}});
- s+=`<polyline points="${zc.map(c=>`${X(c[0])},${Y(c[1])}`).join(" ")}" fill="none" stroke="${COLS()[S.activa%5]}" stroke-width="2.2"/>`;
- const tr=l.nombre.match(/(T\d)$/);if(tr&&D.anteproyecto.torres){const L0=toXY(l.est[0].lon,l.est[0].lat);D.anteproyecto.torres.filter(t=>t[0]===tr[1]).forEach(t=>{const x=dist(toXY(t[2],t[3]),L0);s+=`<line x1="${X(x)}" x2="${X(x)}" y1="${Y(t[5])}" y2="${Y(t[6])}" stroke="${ink}"/><circle cx="${X(x)}" cy="${Y(t[6])}" r="2.5" fill="${ink}"/>`;});}
+ torres.forEach(t=>{const alta=t.h>V("h_torre_max");s+=`<line x1="${X(t.x)}" x2="${X(t.x)}" y1="${Y(t.ter)}" y2="${Y(t.top)}" stroke="${alta?css("--red"):col}" stroke-width="2.4"/><path d="M${X(t.x)-4},${Y(t.ter)} L${X(t.x)},${Y(t.ter)-6} L${X(t.x)+4},${Y(t.ter)} Z" fill="${alta?css("--red"):col}"/>`;});
+ s+=`<polyline points="${sop.map(t=>`${X(t.x)},${Y(t.top)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2.2"/>`;
+ const tr=l.nombre.match(/(T\d)$/);if(tr&&D.anteproyecto.torres){const L0=toXY(l.est[0].lon,l.est[0].lat);D.anteproyecto.torres.filter(t=>t[0]===tr[1]).forEach(t=>{const x=dist(toXY(t[2],t[3]),L0);s+=`<circle cx="${X(x)}" cy="${Y(t[6])}" r="2.6" fill="none" stroke="${ink}" stroke-width="1.2"/>`;});}
  estX.forEach(([x,e],i)=>{const a=anguloEn(l,i);s+=`<line x1="${X(x)}" x2="${X(x)}" y1="${mt}" y2="${H-mb}" stroke="${lo}" stroke-dasharray="2 3"/><text x="${X(x)+3}" y="${mt-4}" font-size="10" fill="${ink}" font-weight="600">${e.nombre}${i>0&&i<l.est.length-1?` ∠${fmt(Math.abs(a),0)}°`:""}</text>`;});
  svg.innerHTML=s;
- $("perfilTit").innerHTML=`Corte · ${l.nombre} · ${fmt(acum)} m en planta · terreno Copernicus GLO-30 · cable como cuerda recta a ${V("h_est")} m sobre cada estación · <span class="warn">naranjo: gálibo &lt; ${V("galibo")} m (${fmt(malos*10)} m requieren torres)</span>`+(tr&&D.anteproyecto.torres?" · puntos: torres y cota de cable P178":"");}
+ $("perfilTit").innerHTML=`Corte · ${l.nombre} · ${fmt(acum)} m en planta · rasante con <b>${torres.length} torres</b> (máx. ${fmt(ra.hMax,0)} m${ra.altas?`, <span class="bad">${ra.altas} sobre ${V("h_torre_max")} m</span>`:""}) · gálibo ≥ ${V("galibo")} m · vano ≤ ${V("vano_max")} m · terreno Copernicus GLO-30`+(tr&&D.anteproyecto.torres?` · círculos: cota de cable de las ${D.anteproyecto.torres.filter(t=>t[0]===tr[1]).length} torres P178`:"");}
 
 // =============================================================== vista 3D (MapLibre GL, carga diferida)
 let M3=null,vista3d=false,marcas3d=[],listo3d=false;
@@ -633,9 +702,9 @@ function actualizar3D(){if(!M3||!vista3d||!listo3d||!R)return;const C=COLS();
  const est=fc(O.huellas.map(f=>({type:"Feature",properties:{h:V("h_est")+4},geometry:{type:"Polygon",coordinates:[f]}})));
  // cable en el aire: tramos de 10 m extruidos a la cota de la cuerda entre estaciones (relativa al terreno Copernicus)
  const cab=[];S.lineas.forEach((l,li)=>{for(let i=0;i<l.est.length-1;i++){const a=l.est[i],b=l.est[i+1],A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),Lm=dist(A,B),n=Math.max(1,Math.ceil(Lm/10));
-  const za=cota(a.lon,a.lat)+V("h_est"),zb=cota(b.lon,b.lat)+V("h_est");
+  const ra=rasante(l),x0=ra.estX[i][0];
   for(let k=0;k<n;k++){const f0=k/n,f1=(k+1)/n,p0=[A[0]+(B[0]-A[0])*f0,A[1]+(B[1]-A[1])*f0],p1=[A[0]+(B[0]-A[0])*f1,A[1]+(B[1]-A[1])*f1],m=toLL((p0[0]+p1[0])/2,(p0[1]+p1[1])/2);
-   const rel=Math.max(1,za+(zb-za)*(f0+f1)/2-cota(m[0],m[1]));
+   const rel=Math.max(1,ra.cz(x0+Lm*(f0+f1)/2)-cota(m[0],m[1]));
    cab.push({type:"Feature",properties:{c:C[li%C.length],b:rel-.8,h:rel},geometry:{type:"Polygon",coordinates:[rect(p0,p1,2.5)]}});}}});
  const src={ed,cob,faja,est,cab:fc(cab)};
  for(const [k,v] of Object.entries(src)){if(M3.getSource(k))M3.getSource(k).setData(v);else M3.addSource(k,{type:"geojson",data:v});}

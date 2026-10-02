@@ -105,3 +105,67 @@ discusión normativa. Se reporta por tramo y por estación.
 La A incluye la península de Tumbes (zonas forestales de 900 y 1.115 ha) y sólo una zona del centro.
 La B incluye el centro y deja fuera el bosque de Tumbes. Población: suma de manzanas cuyo centroide cae
 dentro de cada candidata.
+
+## 7. Inversión proporcional al presupuesto P178 (2026-10-02)
+
+Costos unitarios de costo directo en UF (valor UF al 31-12-2024), sacados del presupuesto del
+anteproyecto (carpeta Drive «1. Presupuesto»):
+
+| Partida | Unitario | Origen |
+|---|---|---|
+| Estación motriz / retorno / intermedia (electromecánica) | 116.183 / 67.580 / 62.178 por estación | 14_P178-TEL_TEL.xlsx, T1 y T2 |
+| Garaje de cabinas | 45.851 por línea | idem |
+| Torres | 39.885 UF/km (31 torres en 4,18 km ≈ 7,4/km) | idem |
+| Cables (comunicaciones + portante-tractor) | 4,72 + 8,04 UF/m | idem |
+| Cabinas | 39,58 UF/m + 20.030 por estación (ajuste exacto a T1 y T2) | idem |
+| Herramientas, repuestos y rescate | 18.624 + 7,13 UF/m por línea | idem |
+| Montaje | 6,22 % del suministro | idem |
+| Arquitectura | extremo 44.682 · intermedia 42.733 · transbordo 67.701 por estación | 05_P178-TEL_ARQ.xlsx (7 estaciones) |
+| Estructuras | 1.756 por estación | Cuadro 1.2-11, ítem 4 / 7 |
+| Instalaciones eléctricas | 16.154 por estación y línea | 15_P178-TEL_ELEC.xlsx / 8 |
+| Obras urbanas complementarias | 36.490 por estación física | Cuadro 1.2-11, ítems 1–3 y 6–13 / 7 |
+| Recargo por ángulo | P246 Cuadro 1.2-5 (punto medio del rango) sobre electromecánica y arquitectura | P246 |
+| GG y U · IVA | 35 % · 19 % | P178 |
+
+**Contraste con el anteproyecto completo:**
+- Costo directo: 2.140.543 UF contra 2.127.475 UF del P178 (+0,6 %).
+- Total sin expropiación: 3.438.782 UF contra 3.417.788 UF (+0,6 %).
+- Electromecánica por tramo: dentro de ±2,3 %.
+
+**Límite:** las torres se estiman por km, no por la topografía del corte.
+
+## 8. Motor fuera del Gran Concepción
+
+Prueba en Valparaíso (2026-10-02, proyecto de prueba retirado del índice). Todo funcionó:
+- huso UTM 19;
+- descarga automática del tile Copernicus;
+- catastro SII y escrituras.
+
+**Advertencia:** fuera del vuelo SECTRA, las edificaciones vienen de OSM. Ahí la cobertura es
+incompleta: 2.441 edificios contra 6.174 lotes SII, y la regla estima 5.215 viviendas contra 8.244
+roles habitacionales. **Fuera del Gran Concepción, el conteo de viviendas bajo la faja queda
+subestimado.** Hay que sumar otra fuente de huellas (Microsoft o Google Open Buildings) antes de
+usarlo en otras ciudades.
+
+## 9. Rasante y torres (2026-10-02)
+
+El cable no puede quedar bajo la topografía. Entre dos estaciones se parte de la cuerda recta, con el
+cable a `h_est` (8 m) sobre cada andén. Luego se insertan apoyos de forma recursiva:
+- en el punto de mayor déficit de gálibo, con la cima a gálibo (10 m) sobre el terreno, hasta que
+  ningún punto del tramo quede por debajo;
+- se excluye la zona de estación (media huella + 10 m), donde el cable baja al andén;
+- después se agregan apoyos sobre la misma recta donde el vano supera 320 m.
+
+El modelo no incluye catenaria.
+
+Contraste con el anteproyecto: **30 torres (19 + 11) contra 31 del P178 (21 + 10)**. Torre más alta:
+31 m, contra 42 m en el P178. Costo directo: 2.135.103 UF, +0,4 % sobre el del P178. El P178 trae pares
+de torres a 10–19 m (P9–P10, P17–P18), por eso la fusión de apoyos cercanos (`vano_min`) queda apagada
+por defecto. Cada torre se valoriza a 5.374 UF (166.590 UF / 31).
+
+## 10. Prioridad de estaciones
+
+**Población potencial** de una estación: personas dentro de su cobertura, aunque otra estación les dé
+un menor tiempo total. La prioridad es relativa a la estación de mayor población potencial: alta
+≥ 66 %, media ≥ 33 %, baja bajo eso. La población **exclusiva** (asignada por menor tiempo al centro)
+se reporta aparte.
