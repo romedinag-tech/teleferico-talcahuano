@@ -69,6 +69,7 @@ input[type=number]{font-family:var(--font-data)}
 .lista .it:hover{background:var(--surface-alt)}
 .lista .it.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.chk{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex:none}
 .est{display:grid;grid-template-columns:18px 1fr 64px 46px 22px;gap:4px;align-items:center;padding:3px 0;border-bottom:1px dashed var(--line)}
 .est input{padding:3px 5px;font-size:.78rem}
 .ang{font-family:var(--font-data);font-size:.72rem;text-align:right}
@@ -146,7 +147,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
    </div>
    <div class="card">
     <p class="eyebrow">Red</p><h3>Líneas y estaciones</h3>
-    <p class="lead">Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa y la <b>sombra</b> bajo la línea activa muestra la prolongación sin quiebre (0°). Clic sobre una línea inserta una estación; <b>doble clic sobre una estación la alinea a 0°</b>; clic derecho borra el último punto mientras dibujas.</p>
+    <p class="lead">Un proyecto puede tener varias líneas (convergentes o paralelas); la <b>casilla</b> de cada una define si se considera en los resultados. Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa y la <b>sombra</b> bajo la línea activa muestra la prolongación sin quiebre (0°). Clic sobre una línea inserta una estación; <b>doble clic sobre una estación la alinea a 0°</b>; clic derecho borra el último punto mientras dibujas.</p>
     <div class="lista" id="listaLineas"></div>
     <div class="row"><button class="b" id="bNuevaLinea">+ Línea</button><button class="b" id="bAgregar">+ Estaciones (clic en mapa)</button></div>
     <div id="listaEst"></div>
@@ -290,7 +291,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
 </script>
 <script>
 "use strict";
-const VERSION = "202610021658";
+const VERSION = "202610021956";
 let D=null, PID=null, INDICE=null;
 const $=id=>document.getElementById(id);
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -419,15 +420,16 @@ function rasante(l){
  cacheRas.set(key,res);return res;}
 function terrenoEn(pts,x){let b=pts[0];for(const p of pts)if(Math.abs(p[0]-x)<Math.abs(b[0]-x))b=p;return b[1];}
 
+const incl=l=>l.incluida!==false;   // casilla «considerar en el proyecto» de cada línea
 // =============================================================== cálculo
 const cacheIso=new Map();
 function iso(e){const k=[e.lon.toFixed(6),e.lat.toFixed(6),P.tobler.v,P.v_cam.v].join();if(!cacheIso.has(k))cacheIso.set(k,dijkstra(toXY(e.lon,e.lat),40*60));return cacheIso.get(k);}
 function calcular(){
  const R={est:[],tramos:[],mz:new Array(D.manzanas.length).fill(null)};
- S.lineas.forEach((l,li)=>l.est.forEach((e,ei)=>R.est.push({li,ei,e,xy:toXY(e.lon,e.lat)})));
+ S.lineas.forEach((l,li)=>{if(incl(l))l.est.forEach((e,ei)=>R.est.push({li,ei,e,xy:toXY(e.lon,e.lat)}));});
  if(!R.est.length)return R;
  const n=R.est.length,adj=R.est.map(()=>[]),id=(li,ei)=>R.est.findIndex(s=>s.li===li&&s.ei===ei);
- S.lineas.forEach((l,li)=>{for(let i=0;i<l.est.length-1;i++){const a=id(li,i),b=id(li,i+1),Lm=dist(R.est[a].xy,R.est[b].xy);
+ S.lineas.forEach((l,li)=>{if(!incl(l))return;for(let i=0;i<l.est.length-1;i++){const a=id(li,i),b=id(li,i+1),Lm=dist(R.est[a].xy,R.est[b].xy);
   const dz=cota(l.est[i+1].lon,l.est[i+1].lat)-cota(l.est[i].lon,l.est[i].lat),Li=Math.hypot(Lm,dz),t=Li/V("v_linea")+V("t_est");
   R.tramos.push({li,i,a,b,L:Lm,Li,dz,t});adj[a].push([b,t,0]);adj[b].push([a,t,0]);}});
  R.transb=[];for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)if(R.est[a].li!==R.est[b].li&&dist(R.est[a].xy,R.est[b].xy)<80){adj[a].push([b,V("t_transb"),1]);adj[b].push([a,V("t_transb"),1]);R.transb.push([a,b]);}
@@ -451,7 +453,7 @@ function calcular(){
 
 function sobrevuelo(R){const O={fajas:[],huellas:[],ed:new Map(),lot:new Map()};
  R.tramos.forEach(t=>O.fajas.push(rect(R.est[t.a].xy,R.est[t.b].xy,V("faja"))));
- S.lineas.forEach(l=>l.est.forEach((e,i)=>{const p=toXY(e.lon,e.lat);let d=[1,0];if(l.est.length>1){const a=l.est[Math.max(0,i-1)],b=l.est[Math.min(l.est.length-1,i+1)];const A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat);d=[B[0]-A[0],B[1]-A[1]];}
+ S.lineas.filter(incl).forEach(l=>l.est.forEach((e,i)=>{const p=toXY(e.lon,e.lat);let d=[1,0];if(l.est.length>1){const a=l.est[Math.max(0,i-1)],b=l.est[Math.min(l.est.length-1,i+1)];const A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat);d=[B[0]-A[0],B[1]-A[1]];}
   const L=Math.hypot(...d)||1,u=[d[0]/L,d[1]/L],h=V("est_largo")/2;O.huellas.push(rect([p[0]-u[0]*h,p[1]-u[1]*h],[p[0]+u[0]*h,p[1]+u[1]*h],V("est_ancho")));}));
  const ev=(pts,tipo)=>{const T=turf.polygon([pts]),b=bboxP(pts);
   for(const i of candidatos(IE,b)){if(turf.booleanIntersects(polyT(D.edificaciones[i][0]),T)){const o=O.ed.get(i)||{};o[tipo]=true;O.ed.set(i,o);}}
@@ -477,7 +479,7 @@ function inversion(R,VAL){
  // estaciones físicas: las de distinta línea a < 80 m son una estación de transbordo
  const fis=[];R.est.forEach((s,i)=>{const f=fis.find(f=>f.some(j=>dist(R.est[j].xy,s.xy)<80&&R.est[j].li!==s.li));if(f)f.push(i);else fis.push([i]);});
  const c={em:0,torres:0,cables:0,cabinas:0,otros_em:0,montaje:0,arq:0,estr:0,elec:0,urb:0,recargo:0};let nTor=0;
- S.lineas.forEach((l,li)=>{const n=l.est.length;if(n<2)return;const L=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0);
+ S.lineas.forEach((l,li)=>{const n=l.est.length;if(n<2||!incl(l))return;const L=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0);
   const ang=l.est.map((_,i)=>anguloEn(l,i));
   const emEst=[CU.motriz,...Array(n-2).fill(CU.intermedia),CU.retorno];
   emEst.forEach((v,i)=>{c.em+=v;c.recargo+=v*(i>0&&i<n-1?recargoAng(ang[i]):0);});
@@ -538,8 +540,8 @@ function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();capGuia.clear
    L.polyline([[b.lat,b.lon],[F[1],F[0]]],{color:c,weight:14,opacity:.13,lineCap:"butt",interactive:false}).addTo(capGuia);
    L.polyline([[b.lat,b.lon],[F[1],F[0]]],{color:c,weight:1.2,opacity:.55,dashArray:"2 6",interactive:false}).addTo(capGuia);};
   for(let i=1;i<la.est.length;i++)rayo(la.est[i-1],la.est[i]);rayo(la.est[1],la.est[0]);}
- S.lineas.forEach((l,li)=>{const c=C[li%C.length],act=li===S.activa;
-  if(l.est.length>1){const pl=L.polyline(l.est.map(e=>[e.lat,e.lon]),{color:c,weight:act?6:4,opacity:.95}).addTo(capLin);
+ S.lineas.forEach((l,li)=>{const fuera=!incl(l),c=fuera?css("--ink-lo"):C[li%C.length],act=li===S.activa;
+  if(l.est.length>1){const pl=L.polyline(l.est.map(e=>[e.lat,e.lon]),{color:c,weight:act?6:4,opacity:fuera?.55:.95,dashArray:fuera?"6 6":null}).addTo(capLin);
    pl.on("click",ev=>{L.DomEvent.stopPropagation(ev);S.activa=li;const p=ev.latlng,xy=toXY(p.lng,p.lat);let best=0,bd=1e18;  // inserta en el tramo más cercano
     for(let i=0;i<l.est.length-1;i++){const a=toXY(l.est[i].lon,l.est[i].lat),b=toXY(l.est[i+1].lon,l.est[i+1].lat),dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((xy[0]-a[0])*dx+(xy[1]-a[1])*dy)/(dx*dx+dy*dy||1)));const d=dist(xy,[a[0]+t*dx,a[1]+t*dy]);if(d<bd){bd=d;best=i;}}
     l.est.splice(best+1,0,{lon:p.lng,lat:p.lat,nombre:`E${best+1}·${best+2}`});render();});
@@ -553,7 +555,7 @@ function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();capGuia.clear
    const a=anguloEn(l,ei);if(ei>0&&ei<l.est.length-1){const k=claseAng(a);
     L.marker([e.lat,e.lon],{interactive:false,icon:L.divIcon({className:"",html:`<span class="angtag ${k}">∠ ${fmt(Math.abs(a),0)}°</span>`,iconSize:[52,18],iconAnchor:[26,-12]})}).addTo(capLin);}
    // círculo de cobertura con manilla para cambiar el radio
-   const r=radioDe(e);const ci=L.circle([e.lat,e.lon],{radius:r,color:c,weight:act?1.5:1,opacity:.7,fillOpacity:.04,dashArray:"4 4",interactive:false}).addTo(capCob);
+   if(fuera)return;const r=radioDe(e);const ci=L.circle([e.lat,e.lon],{radius:r,color:c,weight:act?1.5:1,opacity:.7,fillOpacity:.04,dashArray:"4 4",interactive:false}).addTo(capCob);
    if(act){const h=toLL(...(()=>{const p=toXY(e.lon,e.lat);return [p[0]+r,p[1]];})());
     const hm=L.marker([h[1],h[0]],{draggable:true,icon:L.divIcon({className:"",html:`<div title="Arrastra para cambiar el radio" style="width:12px;height:12px;border-radius:3px;background:${css("--surface")};border:2px solid ${c}"></div>`,iconSize:[12,12],iconAnchor:[6,6]})}).addTo(capCob);
     hm.bindTooltip(`Radio ${fmt(r)} m`,{direction:"top"});
@@ -571,7 +573,7 @@ function pintarMapa(){const C=COLS(),sat=baseActual==="sat";
  O.huellas.forEach(f=>L.polygon(f.map(p=>[p[1],p[0]]),{color:css("--ink"),weight:1,fillColor:css("--ink"),fillOpacity:.22,interactive:false}).addTo(capFaja));
  O.ed.forEach((o,i)=>{const e=D.edificaciones[i],hab=e[2]>0;const pg=L.polygon(e[0].map(r=>r.map(p=>[p[1],p[0]])),{color:hab?css("--viv"):css("--noviv"),weight:1,fillOpacity:.6,fillColor:hab?css("--viv"):css("--noviv"),interactive:!PUB()}).addTo(capAfect);
   if(!PUB())pg.bindTooltip(`${hab?"Vivienda":"Edificación no habitacional"} · huella ${fmt(e[6])} m²`+(e[4]?` · ${e[4]} pisos (SII)`:"")+(hab?`<br>Viviendas estimadas ${fmt(e[2],1)}`:"")+(o.est?"<br>Bajo estación":""));});
- $("leyenda").innerHTML=`<details open><summary style="cursor:pointer;font-weight:600">Leyenda</summary><b>Cobertura</b>${S.lineas.map((l,li)=>`<i style="background:${C[li%C.length]};opacity:.6"></i>${l.nombre}`).join("<br>")}
+ $("leyenda").innerHTML=`<details open><summary style="cursor:pointer;font-weight:600">Leyenda</summary><b>Cobertura</b>${S.lineas.map((l,li)=>`<i style="background:${C[li%C.length]};opacity:${incl(l)?.6:.15}"></i>${l.nombre}${incl(l)?"":" <span class='mut'>(no considerada)</span>"}`).join("<br>")}
   <br><span class="mut">más intenso = menos caminata</span><br><b style="margin-top:4px">Sobrevuelo</b><i style="border:1.5px dashed ${css("--faja")};background:transparent"></i>Faja (${V("faja")} m)<br>
   <i style="background:${css("--ink")};opacity:.3"></i>Huella de estación<br><i style="background:${css("--viv")}"></i>Vivienda afectada<br><i style="background:${css("--noviv")}"></i>Otra edificación<br>
   <i style="background:currentColor;opacity:.25;height:6px;vertical-align:1px"></i>Sombra: prolongación sin quiebre (0°)<br><b style="margin-top:4px">Ángulo en estación</b><span class="angtag">∠ ≤ ${V("ang_lim")}°</span> <span class="angtag warn">&gt; ${V("ang_lim")}°</span> <span class="angtag bad">&gt; 10°</span></details>`;}
@@ -592,8 +594,9 @@ function armarParams(){for(const g of ["pCob","pOp","pCost"])$(g).innerHTML="";
   i.id="p_"+k;i.value=p.v;i.onchange=()=>{p.v=i.value;cacheIso.clear();render();};$(p.g).appendChild(i);}}
 function panelLineas(){const C=COLS();const ll=$("listaLineas");ll.innerHTML="";
  S.lineas.forEach((l,li)=>{const d=document.createElement("div");d.className="it"+(li===S.activa?" on":"");
-  d.innerHTML=`<span class="sw" style="background:${C[li%C.length]}"></span><input type="text" value="${l.nombre}" style="flex:1;border:none;background:transparent;padding:2px" aria-label="Nombre de la línea"><span class="mut num">${l.est.length}</span><button class="x" title="Eliminar línea" aria-label="Eliminar línea">✕</button>`;
-  d.onclick=()=>{if(S.activa!==li){S.activa=li;render();}};const inp=d.querySelector("input");inp.onchange=()=>{l.nombre=inp.value;render();};inp.onclick=ev=>ev.stopPropagation();
+  d.innerHTML=`<input type="checkbox" class="chk" ${incl(l)?"checked":""} title="Considerar esta línea en el proyecto" aria-label="Considerar ${l.nombre} en el proyecto"><span class="sw" style="background:${incl(l)?C[li%C.length]:css("--line-2")}"></span><input type="text" value="${l.nombre}" style="flex:1;border:none;background:transparent;padding:2px;${incl(l)?"":"color:var(--ink-lo);text-decoration:line-through"}" aria-label="Nombre de la línea"><span class="mut num">${l.est.length}</span><button class="x" title="Eliminar línea" aria-label="Eliminar línea">✕</button>`;
+  const ck=d.querySelector(".chk");ck.onclick=ev=>ev.stopPropagation();ck.onchange=()=>{l.incluida=ck.checked;render();};
+  d.onclick=()=>{if(S.activa!==li){S.activa=li;render();}};const inp=d.querySelector("input[type=text]");inp.onchange=()=>{l.nombre=inp.value;render();};inp.onclick=ev=>ev.stopPropagation();
   d.querySelector("button").onclick=ev=>{ev.stopPropagation();if(confirm(`¿Eliminar ${l.nombre}?`)){S.lineas.splice(li,1);S.activa=0;render();}};ll.appendChild(d);});
  const l=S.lineas[S.activa],le=$("listaEst");if(!l){le.innerHTML="";return;}
  le.innerHTML=`<div class="est mut" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.04em"><span></span><span>Estación</span><span>Radio m</span><span style="text-align:right">Ángulo</span><span></span></div>`;
@@ -612,17 +615,17 @@ function guardarTrazados(t){try{localStorage.setItem(claveT(),JSON.stringify(t))
 
 function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog=R.est.reduce((s,e)=>s+e.hog,0),L=R.tramos.reduce((s,t)=>s+t.L,0);
  const pobArea=D.manzanas.reduce((s,m)=>s+(m[8]?m[2]||0:0),0),pobCub=D.manzanas.reduce((s,m,i)=>s+(m[8]&&R.mz[i]?m[2]||0:0),0);
- const ang=[];S.lineas.forEach(l=>l.est.forEach((e,i)=>{const a=Math.abs(anguloEn(l,i));if(i>0&&i<l.est.length-1&&a>V("ang_lim"))ang.push(`${e.nombre} ${fmt(a,0)}°`);}));
+ const ang=[];S.lineas.filter(incl).forEach(l=>l.est.forEach((e,i)=>{const a=Math.abs(anguloEn(l,i));if(i>0&&i<l.est.length-1&&a>V("ang_lim"))ang.push(`${e.nombre} ${fmt(a,0)}°`);}));
  const ED=[0,0,0,0,0,0,0];D.manzanas.forEach((m,i)=>{if(R.mz[i]&&m[9])m[9].forEach((v,k)=>ED[k]+=v||0);});const edT=ED.reduce((a,b)=>a+b,0);
  const ET=["0–5","6–13","14–17","18–24","25–44","45–59","60 y más"];
  $("kpis").innerHTML=`<div class="kpi full dest">${ico("pers")}<div class="v">${fmt(pob)}</div><div class="l">personas beneficiadas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div>
    <details class="desp"><summary>Por tramo de edad</summary><table><tr><th>Edad</th><th>Personas</th><th>%</th></tr>${ET.map((t,k)=>`<tr><td>${t} años</td><td>${fmt(ED[k])}</td><td>${fmt(edT?100*ED[k]/edT:0,1)}</td></tr>`).join("")}</table><div class="nota">Censo 2024 por manzana; manzanas asignadas a alguna estación.</div></details></div>
   <div class="kpi full dest">${ico("plata")}<div class="v">${fmt(INV.E2)} UF</div><div class="l">inversión total estimada (con expropiación E2) · ≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} · con E1: ${fmt(INV.E1)} UF</div></div>
-  <div class="kpi">${ico("regla")}<div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>l.est.length>1).length} línea(s) · ${R.est.length} estaciones</div></div>
+  <div class="kpi">${ico("regla")}<div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>incl(l)&&l.est.length>1).length} línea(s) consideradas · ${R.est.length} estaciones${S.lineas.some(l=>!incl(l))?` · ${S.lineas.filter(l=>!incl(l)).length} fuera`:""}</div></div>
   <div class="kpi">${ico("angulo")}<div class="v ${ang.length?"warn":""}">${ang.length}</div><div class="l">quiebres &gt; ${V("ang_lim")}°${ang.length?": "+ang.join(", "):""}</div></div>
   <div class="kpi">${ico("casa")}<div class="v">${fmt(VAL.E1.viv)}</div><div class="l">viviendas bajo la faja · ≈ ${fmt(VAL.E1.pers)} personas</div></div>
   <div class="kpi">${ico("terreno")}<div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>
-  <div class="kpi full">${ico("tren")}<div class="v">${fmt(INV.nTor)} torres</div><div class="l">en la rasante (gálibo ≥ ${V("galibo")} m, vano ≤ ${V("vano_max")} m)${S.lineas.some(l=>l.est.length>1&&rasante(l).altas)?' · <span class="bad">hay torres sobre la altura máxima</span>':""}</div></div>`;
+  <div class="kpi full">${ico("tren")}<div class="v">${fmt(INV.nTor)} torres</div><div class="l">en la rasante (gálibo ≥ ${V("galibo")} m, vano ≤ ${V("vano_max")} m)${S.lineas.some(l=>incl(l)&&l.est.length>1&&rasante(l).altas)?' · <span class="bad">hay torres sobre la altura máxima</span>':""}</div></div>`;
  let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th></tr>`;
  R.est.forEach((s,i)=>{const acc=s.pob?s.accSum/s.pob:null,tot=acc==null?null:acc+s.espera+s.viaje+s.transb+s.egr;
   h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${i===R.dest?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
@@ -634,7 +637,7 @@ function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog
   `<div class="nota">Exclusiva (asignada por menor tiempo al centro): ${R.est.map(s=>`${s.e.nombre} ${fmt(s.pob)}`).join(" · ")}</div>`;
  h=`<table><tr><th>Tramo</th><th>Planta m</th><th>Inclin. m</th><th>Desnivel</th><th>Torres</th><th>Min</th></tr>`;
  R.tramos.forEach(t=>{const l=S.lineas[t.li],nt=rasante(l).torres.filter(x=>x.tramo===t.i).length;h+=`<tr><td>${l.est[t.i].nombre} → ${l.est[t.i+1].nombre}</td><td>${fmt(t.L)}</td><td>${fmt(t.Li)}</td><td>${fmt(t.dz)} m</td><td>${nt}</td><td>${fmt(t.t/60,1)}</td></tr>`;});
- S.lineas.forEach((l,li)=>{if(l.est.length<2)return;const tt=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.t,0);h+=`<tr class="tot"><td>${l.nombre}</td><td>${fmt(R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0))}</td><td></td><td></td><td>${rasante(l).torres.length}</td><td>${fmt(tt/60,1)}</td></tr>`;});
+ S.lineas.forEach((l,li)=>{if(l.est.length<2||!incl(l))return;const tt=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.t,0);h+=`<tr class="tot"><td>${l.nombre}</td><td>${fmt(R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0))}</td><td></td><td></td><td>${rasante(l).torres.length}</td><td>${fmt(tt/60,1)}</td></tr>`;});
  $("tTramos").innerHTML=h+"</table>";
  const E1=VAL.E1,E2=VAL.E2,f=(t,a,b,cl="")=>`<tr class="${cl}"><td>${t}</td><td>${a}</td><td>${b}</td></tr>`;
  $("tExp").innerHTML=`<table><tr><th></th><th>E1</th><th>E2</th></tr>`+f("Edificios afectados",fmt(E1.ed),fmt(E2.ed))+f("Viviendas",fmt(E1.viv),fmt(E2.viv))+f("Personas (≈)",fmt(E1.pers),fmt(E2.pers))+
@@ -701,7 +704,7 @@ function actualizar3D(){if(!M3||!vista3d||!listo3d||!R)return;const C=COLS();
  const faja=fc(O.fajas.map(f=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[f]}})));
  const est=fc(O.huellas.map(f=>({type:"Feature",properties:{h:V("h_est")+4},geometry:{type:"Polygon",coordinates:[f]}})));
  // cable en el aire: tramos de 10 m extruidos a la cota de la cuerda entre estaciones (relativa al terreno Copernicus)
- const cab=[];S.lineas.forEach((l,li)=>{for(let i=0;i<l.est.length-1;i++){const a=l.est[i],b=l.est[i+1],A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),Lm=dist(A,B),n=Math.max(1,Math.ceil(Lm/10));
+ const cab=[];S.lineas.forEach((l,li)=>{if(!incl(l))return;for(let i=0;i<l.est.length-1;i++){const a=l.est[i],b=l.est[i+1],A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),Lm=dist(A,B),n=Math.max(1,Math.ceil(Lm/10));
   const ra=rasante(l),x0=ra.estX[i][0];
   for(let k=0;k<n;k++){const f0=k/n,f1=(k+1)/n,p0=[A[0]+(B[0]-A[0])*f0,A[1]+(B[1]-A[1])*f0],p1=[A[0]+(B[0]-A[0])*f1,A[1]+(B[1]-A[1])*f1],m=toLL((p0[0]+p1[0])/2,(p0[1]+p1[1])/2);
    const rel=Math.max(1,ra.cz(x0+Lm*(f0+f1)/2)-cota(m[0],m[1]));
@@ -714,7 +717,7 @@ function actualizar3D(){if(!M3||!vista3d||!listo3d||!R)return;const C=COLS();
  capa("ed",{type:"fill-extrusion",source:"ed",minzoom:13,paint:{"fill-extrusion-color":["get","c"],"fill-extrusion-height":["get","h"],"fill-extrusion-opacity":.9}});
  capa("est",{type:"fill-extrusion",source:"est",paint:{"fill-extrusion-color":css("--ink"),"fill-extrusion-height":["get","h"],"fill-extrusion-opacity":.85}});
  capa("cab",{type:"fill-extrusion",source:"cab",paint:{"fill-extrusion-color":["get","c"],"fill-extrusion-base":["get","b"],"fill-extrusion-height":["get","h"]}});
- marcas3d.forEach(m=>m.remove());marcas3d=S.lineas.flatMap(l=>l.est.map(e=>{const d=document.createElement("div");d.className="lab3d";d.textContent=e.nombre;
+ marcas3d.forEach(m=>m.remove());marcas3d=S.lineas.filter(incl).flatMap(l=>l.est.map(e=>{const d=document.createElement("div");d.className="lab3d";d.textContent=e.nombre;
   return new maplibregl.Marker({element:d,anchor:"bottom",offset:[0,-14]}).setLngLat([e.lon,e.lat]).addTo(M3);}));}
 $("v2d").onclick=()=>activar3D(false);$("v3d").onclick=()=>activar3D(true);
 
@@ -749,7 +752,7 @@ $("npEmpezar").onclick=()=>{const nom=$("npNombre").value.trim();if(!nom){alert(
  $("npBorrar").onclick=()=>{nuevo.area=[];dibujarNuevo();setModo("area","Nuevo proyecto: clic en cada vértice del área");};
  $("npSalir").onclick=()=>{nuevo=null;capNuevo.clearLayers();card.remove();setModo(null);};
  $("npSolicitud").onclick=()=>{if(nuevo.area.length<3){alert("Primero dibuja y cierra el área.");return;}const ring=[...nuevo.area,nuevo.area[0]];
-  const sol={id:nuevo.id,nombre:nuevo.nombre,area:{type:"Polygon",coordinates:[ring]},referencial:{lineas:S.lineas.filter(l=>l.est.length>1).map(l=>({nombre:l.nombre,estaciones:l.est.map(e=>[+e.lon.toFixed(6),+e.lat.toFixed(6),e.nombre])}))},
+  const sol={id:nuevo.id,nombre:nuevo.nombre,area:{type:"Polygon",coordinates:[ring]},referencial:{lineas:S.lineas.filter(l=>incl(l)&&l.est.length>1).map(l=>({nombre:l.nombre,estaciones:l.est.map(e=>[+e.lon.toFixed(6),+e.lat.toFixed(6),e.nombre])}))},
    centro:S.centro?[S.centro.lon,S.centro.lat]:null,solicitado:new Date().toISOString()};
   const b=new Blob([JSON.stringify(sol,null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`solicitud_${nuevo.id}.json`;a.click();
   alert(`Solicitud descargada: solicitud_${nuevo.id}.json\n\nDéjala en la carpeta solicitudes/ del proyecto y corre:\npython -X utf8 scripts/motor_proyecto.py --solicitudes`);};};
