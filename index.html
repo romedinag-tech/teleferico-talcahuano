@@ -79,6 +79,17 @@ input[type=number]{font-family:var(--font-data)}
 .kpi .v{font:700 1.25rem/1.1 var(--font-data);color:var(--navy)}
 .kpi .l{font-size:.72rem;color:var(--ink-mid);margin-top:2px}
 .kpi.full{grid-column:1/3}
+.kpi.dest{background:color-mix(in srgb,var(--accent) 7%,var(--surface));border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.kpi.dest .v{font-size:1.55rem}
+.total{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.total .v{font:700 1.35rem/1.1 var(--font-data);color:var(--navy)}.total .l{font-size:.75rem;color:var(--ink-mid)}
+details.desp{margin-top:8px}details.desp>summary{cursor:pointer;font-weight:600;font-size:.8rem;color:var(--accent);list-style:none}
+details.desp>summary::before{content:"▸ ";}details.desp[open]>summary::before{content:"▾ ";}
+#map3d{position:absolute;inset:0;display:none;z-index:1000;background:var(--surface-alt)}
+.vista{position:absolute;z-index:1001;top:10px;left:56px;display:flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden;box-shadow:var(--sh)}
+.vista button{border:none;background:var(--surface);color:var(--ink);font:700 .78rem var(--font-ui);padding:6px 11px;cursor:pointer}
+.vista button.on{background:var(--navy);color:#fff}
+.lab3d{font:600 11px var(--font-ui);background:var(--surface);color:var(--ink);border:1px solid var(--line-2);border-radius:5px;padding:1px 5px;white-space:nowrap;box-shadow:var(--sh-sm)}
 table{border-collapse:collapse;width:100%;font-size:.74rem}
 th,td{padding:4px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 th{color:var(--ink-lo);font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em}
@@ -129,7 +140,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
    </div>
    <div class="card">
     <p class="eyebrow">Red</p><h3>Líneas y estaciones</h3>
-    <p class="lead">Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa. Clic sobre una línea inserta una estación; arrastra para mover.</p>
+    <p class="lead">Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa y la <b>sombra</b> bajo la línea activa muestra la prolongación sin quiebre (0°). Clic sobre una línea inserta una estación; clic derecho borra el último punto mientras dibujas.</p>
     <div class="lista" id="listaLineas"></div>
     <div class="row"><button class="b" id="bNuevaLinea">+ Línea</button><button class="b" id="bAgregar">+ Estaciones (clic en mapa)</button></div>
     <div id="listaEst"></div>
@@ -145,7 +156,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
   </aside>
   <!-- ============ MAPA + CORTE ============ -->
   <section class="centro" aria-label="Mapa y corte">
-   <div style="position:relative;min-height:0"><div id="map" style="position:absolute;inset:0"></div><div class="modo" id="modo"></div></div>
+   <div style="position:relative;min-height:0"><div id="map" style="position:absolute;inset:0"></div><div id="map3d"></div><div class="vista" role="group" aria-label="Vista del mapa"><button id="v2d" class="on">2D</button><button id="v3d" title="Perspectiva 3D: arrastra con clic derecho o Ctrl para girar e inclinar">3D</button></div><div class="modo" id="modo"></div></div>
    <div id="perfil"><div class="eyebrow" id="perfilTit">Corte topográfico</div><svg id="svgPerfil" role="img" aria-label="Corte topográfico de la línea activa"></svg></div>
   </section>
   <!-- ============ OUTPUTS ============ -->
@@ -271,7 +282,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
 </script>
 <script>
 "use strict";
-const VERSION = "202610021613";
+const VERSION = "202610021645";
 let D=null, PID=null, INDICE=null;
 const $=id=>document.getElementById(id);
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -435,8 +446,8 @@ const etiquetas=L.layerGroup([L.tileLayer("https://server.arcgisonline.com/ArcGI
  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{maxZoom:19})]);
 let baseActual="mapa";
 const cv=L.canvas({padding:.3});
-const capArea=L.layerGroup(),capMz=L.layerGroup(),capEd=L.layerGroup(),capFaja=L.layerGroup(),capAfect=L.layerGroup(),capCob=L.layerGroup(),capLin=L.layerGroup(),capTor=L.layerGroup(),capNuevo=L.layerGroup().addTo(map);
-[capArea,capMz,capFaja,capAfect,capCob,capLin,capTor].forEach(c=>c.addTo(map));
+const capGuia=L.layerGroup(),capArea=L.layerGroup(),capMz=L.layerGroup(),capEd=L.layerGroup(),capFaja=L.layerGroup(),capAfect=L.layerGroup(),capCob=L.layerGroup(),capLin=L.layerGroup(),capTor=L.layerGroup(),capNuevo=L.layerGroup().addTo(map);
+[capArea,capMz,capFaja,capAfect,capGuia,capCob,capLin,capTor].forEach(c=>c.addTo(map));
 const CAPAS=[["Área de estudio",capArea],["Manzanas cubiertas",capMz],["Círculos de cobertura",capCob],["Faja y estaciones",capFaja],["Afectados",capAfect],["Torres del referencial",capTor],["Edificaciones (zoom ≥ 16)",capEd]];
 let verEd=true;
 const ctrlBase=L.control({position:"topright"});ctrlBase.onAdd=()=>{const d=L.DomUtil.create("div","leyenda");
@@ -452,6 +463,8 @@ const leyenda=L.control({position:"bottomleft"});leyenda.onAdd=()=>{const d=L.Do
 map.on("zoomend",ajustarEd);
 map.on("click",ev=>{if(modo==="area"){nuevo.area.push([ev.latlng.lng,ev.latlng.lat]);dibujarNuevo();return;}
  if(modo!=="agregar")return;const l=S.lineas[S.activa];if(!l)return;l.est.push({lon:ev.latlng.lng,lat:ev.latlng.lat,nombre:`E${l.est.length+1}`});render();});
+map.on("contextmenu",ev=>{if(modo==="area"&&nuevo&&nuevo.area.length){L.DomEvent.preventDefault(ev.originalEvent);nuevo.area.pop();dibujarNuevo();return;}
+ if(modo==="agregar"){const l=S.lineas[S.activa];if(l&&l.est.length){L.DomEvent.preventDefault(ev.originalEvent);l.est.pop();render();}}});
 function setModo(m,txt){modo=m;$("modo").style.display=m?"block":"none";$("modo").textContent=txt||"";map.getContainer().style.cursor=m?"crosshair":"";$("bAgregar").classList.toggle("on",m==="agregar");}
 
 function dibujarBaseProyecto(){capArea.clearLayers();capMz.clearLayers();capEd.clearLayers();capTor.clearLayers();
@@ -463,7 +476,12 @@ function dibujarBaseProyecto(){capArea.clearLayers();capMz.clearLayers();capEd.c
 let mzPoly=[];
 function tipMz(i){const m=D.manzanas[i],a=R&&R.mz[i];return `Manzana · ${fmt(m[2])} personas · ${fmt(m[3])} hogares`+(a?`<br>Estación ${R.est[a.si].e.nombre} · caminata ${fmt(a.acc/60,1)} min · total ${fmt(a.tot/60,1)} min`:"<br>Fuera de cobertura");}
 
-function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();const C=COLS();
+function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();capGuia.clearLayers();const C=COLS();
+ const la=S.lineas[S.activa];if(la&&la.est.length>=2){const c=C[S.activa%C.length],LG=1500;
+  const rayo=(a,b)=>{const A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),dx=B[0]-A[0],dy=B[1]-A[1],Ln=Math.hypot(dx,dy)||1,F=toLL(B[0]+dx/Ln*LG,B[1]+dy/Ln*LG);
+   L.polyline([[b.lat,b.lon],[F[1],F[0]]],{color:c,weight:14,opacity:.13,lineCap:"butt",interactive:false}).addTo(capGuia);
+   L.polyline([[b.lat,b.lon],[F[1],F[0]]],{color:c,weight:1.2,opacity:.55,dashArray:"2 6",interactive:false}).addTo(capGuia);};
+  for(let i=1;i<la.est.length;i++)rayo(la.est[i-1],la.est[i]);rayo(la.est[1],la.est[0]);}
  S.lineas.forEach((l,li)=>{const c=C[li%C.length],act=li===S.activa;
   if(l.est.length>1){const pl=L.polyline(l.est.map(e=>[e.lat,e.lon]),{color:c,weight:act?6:4,opacity:.95}).addTo(capLin);
    pl.on("click",ev=>{L.DomEvent.stopPropagation(ev);S.activa=li;const p=ev.latlng,xy=toXY(p.lng,p.lat);let best=0,bd=1e18;  // inserta en el tramo más cercano
@@ -499,7 +517,7 @@ function pintarMapa(){const C=COLS(),sat=baseActual==="sat";
  $("leyenda").innerHTML=`<details open><summary style="cursor:pointer;font-weight:600">Leyenda</summary><b>Cobertura</b>${S.lineas.map((l,li)=>`<i style="background:${C[li%C.length]};opacity:.6"></i>${l.nombre}`).join("<br>")}
   <br><span class="mut">más intenso = menos caminata</span><br><b style="margin-top:4px">Sobrevuelo</b><i style="border:1.5px dashed ${css("--faja")};background:transparent"></i>Faja (${V("faja")} m)<br>
   <i style="background:${css("--ink")};opacity:.3"></i>Huella de estación<br><i style="background:${css("--viv")}"></i>Vivienda afectada<br><i style="background:${css("--noviv")}"></i>Otra edificación<br>
-  <b style="margin-top:4px">Ángulo en estación</b><span class="angtag">∠ ≤ ${V("ang_lim")}°</span> <span class="angtag warn">&gt; ${V("ang_lim")}°</span> <span class="angtag bad">&gt; 10°</span></details>`;}
+  <i style="background:currentColor;opacity:.25;height:6px;vertical-align:1px"></i>Sombra: prolongación sin quiebre (0°)<br><b style="margin-top:4px">Ángulo en estación</b><span class="angtag">∠ ≤ ${V("ang_lim")}°</span> <span class="angtag warn">&gt; ${V("ang_lim")}°</span> <span class="angtag bad">&gt; 10°</span></details>`;}
 
 // =============================================================== paneles
 function armarParams(){for(const g of ["pCob","pOp","pCost"])$(g).innerHTML="";
@@ -529,13 +547,15 @@ function guardarTrazados(t){try{localStorage.setItem(claveT(),JSON.stringify(t))
 function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog=R.est.reduce((s,e)=>s+e.hog,0),L=R.tramos.reduce((s,t)=>s+t.L,0);
  const pobArea=D.manzanas.reduce((s,m)=>s+(m[8]?m[2]||0:0),0),pobCub=D.manzanas.reduce((s,m,i)=>s+(m[8]&&R.mz[i]?m[2]||0:0),0);
  const ang=[];S.lineas.forEach(l=>l.est.forEach((e,i)=>{const a=Math.abs(anguloEn(l,i));if(i>0&&i<l.est.length-1&&a>V("ang_lim"))ang.push(`${e.nombre} ${fmt(a,0)}°`);}));
- const mm=x=>fmt(x*V("uf_clp")/1e9,1);
- $("kpis").innerHTML=`<div class="kpi full"><div class="v">${fmt(pob)}</div><div class="l">personas cubiertas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div></div>
+ const ED=[0,0,0,0,0,0,0];D.manzanas.forEach((m,i)=>{if(R.mz[i]&&m[9])m[9].forEach((v,k)=>ED[k]+=v||0);});const edT=ED.reduce((a,b)=>a+b,0);
+ const ET=["0–5","6–13","14–17","18–24","25–44","45–59","60 y más"];
+ $("kpis").innerHTML=`<div class="kpi full dest"><div class="v">${fmt(pob)}</div><div class="l">personas beneficiadas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div>
+   <details class="desp"><summary>Por tramo de edad</summary><table><tr><th>Edad</th><th>Personas</th><th>%</th></tr>${ET.map((t,k)=>`<tr><td>${t} años</td><td>${fmt(ED[k])}</td><td>${fmt(edT?100*ED[k]/edT:0,1)}</td></tr>`).join("")}</table><div class="nota">Censo 2024 por manzana; manzanas asignadas a alguna estación.</div></details></div>
+  <div class="kpi full dest"><div class="v">${fmt(INV.E2)} UF</div><div class="l">inversión total estimada (con expropiación E2) · ≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} · con E1: ${fmt(INV.E1)} UF</div></div>
   <div class="kpi"><div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>l.est.length>1).length} línea(s) · ${R.est.length} estaciones</div></div>
   <div class="kpi"><div class="v ${ang.length?"warn":""}">${ang.length}</div><div class="l">quiebres &gt; ${V("ang_lim")}°${ang.length?": "+ang.join(", "):""}</div></div>
   <div class="kpi"><div class="v">${fmt(VAL.E1.viv)}</div><div class="l">viviendas bajo la faja · ≈ ${fmt(VAL.E1.pers)} personas</div></div>
-  <div class="kpi"><div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>
-  <div class="kpi full"><div class="v">${fmt(INV.E2/1e3,0)} – ${fmt(INV.E1/1e3,0)} mil UF</div><div class="l">inversión total estimada E2 – E1 (≈ MM$ ${mm(INV.E2)} – ${mm(INV.E1)} mil millones)</div></div>`;
+  <div class="kpi"><div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>`;
  let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th></tr>`;
  R.est.forEach((s,i)=>{const acc=s.pob?s.accSum/s.pob:null,tot=acc==null?null:acc+s.espera+s.viaje+s.transb+s.egr;
   h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${i===R.dest?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
@@ -549,11 +569,14 @@ function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog
   f("Suelo (m²)",fmt(E1.m2),fmt(E2.m2))+f("Suelo (UF)",fmt(E1.ufS),fmt(E2.ufS))+f("Construcción (UF)",fmt(E1.ufC),fmt(E2.ufC))+f("Total (UF)",fmt(E1.uf),fmt(E2.uf),"tot")+`</table>
   <div class="nota">Suelo ${fmt(VAL.ufS,2)} UF/m² (${P.suelo.v==="bajo"?"p50 sitios eriazos":"p50 suelo en casas"}). Costo del sobrevuelo (E1 − E2): <b class="num">${fmt(E1.uf-E2.uf)} UF</b>.</div>`;
  const c=INV.c,g=(t,v,cl="")=>`<tr class="${cl}"><td>${t}</td><td>${fmt(v)}</td><td>${fmt(100*v/INV.cd,1)}</td></tr>`;
- $("tInv").innerHTML=`<table><tr><th>Partida</th><th>UF</th><th>%</th></tr>`+g("Estaciones electromecánicas",c.em)+g("Recargo por ángulos",c.recargo)+g("Torres",c.torres)+g("Cables",c.cables)+g("Cabinas",c.cabinas)+
+ $("tInv").innerHTML=`<div class="total"><span class="l">Total con expropiación E2</span><span class="v">${fmt(INV.E2)} UF</span></div>
+  <div class="total"><span class="l">Total con expropiación E1</span><span class="v" style="font-size:1.05rem">${fmt(INV.E1)} UF</span></div>
+  <div class="nota">≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} (E2) · MM$ ${fmt(INV.E1*V("uf_clp")/1e6)} (E1) · ${INV.nFis} estaciones físicas</div>
+  <details class="desp"><summary>Desglose por partida</summary><table><tr><th>Partida</th><th>UF</th><th>%</th></tr>`+g("Estaciones electromecánicas",c.em)+g("Recargo por ángulos",c.recargo)+g("Torres",c.torres)+g("Cables",c.cables)+g("Cabinas",c.cabinas)+
   g("Garaje, repuestos y rescate",c.otros_em)+g("Montaje",c.montaje)+g("Arquitectura de estaciones",c.arq)+g("Estructuras",c.estr)+g("Instalaciones eléctricas",c.elec)+g("Obras urbanas complementarias",c.urb)+
   g("Costo directo",INV.cd,"tot")+`<tr><td>GG y utilidades (35 %)</td><td>${fmt(INV.gg)}</td><td></td></tr><tr><td>IVA (19 %)</td><td>${fmt(INV.iva)}</td><td></td></tr>
-  <tr class="tot"><td>Total sin expropiación</td><td>${fmt(INV.sinExp)}</td><td></td></tr><tr><td>+ expropiación E2</td><td>${fmt(INV.E2)}</td><td></td></tr><tr><td>+ expropiación E1</td><td>${fmt(INV.E1)}</td><td></td></tr></table>
-  <div class="nota">${INV.nFis} estaciones físicas. Referencia: anteproyecto P178 completo = 2.127.475 UF de costo directo y 3.548.151 UF de total privado con expropiaciones (P246 Cuadro 1.2-11).</div>`;
+  <tr class="tot"><td>Total sin expropiación</td><td>${fmt(INV.sinExp)}</td><td></td></tr><tr><td>Expropiación E2</td><td>${fmt(VAL.E2.uf)}</td><td></td></tr><tr><td>Expropiación E1</td><td>${fmt(VAL.E1.uf)}</td><td></td></tr></table>
+  <div class="nota">Referencia: anteproyecto P178 completo = 2.127.475 UF de costo directo y 3.548.151 UF de total privado con expropiaciones (P246 Cuadro 1.2-11).</div></details>`;
  $("fuentes").textContent="Fuentes: "+D.meta.fuentes+" · datos generados "+D.meta.generado.slice(0,10)+(D.meta.comunas_sin_catastro_sii&&D.meta.comunas_sin_catastro_sii.length?" · ⚠ sin catastro SII: "+D.meta.comunas_sin_catastro_sii.join(", "):"");}
 
 // =============================================================== corte
@@ -581,9 +604,54 @@ function perfil(){const svg=$("svgPerfil"),l=S.lineas[S.activa];svg.innerHTML=""
  svg.innerHTML=s;
  $("perfilTit").innerHTML=`Corte · ${l.nombre} · ${fmt(acum)} m en planta · terreno Copernicus GLO-30 · cable como cuerda recta a ${V("h_est")} m sobre cada estación · <span class="warn">naranjo: gálibo &lt; ${V("galibo")} m (${fmt(malos*10)} m requieren torres)</span>`+(tr&&D.anteproyecto.torres?" · puntos: torres y cota de cable P178":"");}
 
+// =============================================================== vista 3D (MapLibre GL, carga diferida)
+let M3=null,vista3d=false,marcas3d=[],listo3d=false;
+function cargarScript(u){return new Promise((ok,mal)=>{const t=document.createElement("script");t.src=u;t.onload=ok;t.onerror=mal;document.head.appendChild(t);});}
+async function activar3D(on){
+ vista3d=on;$("v2d").classList.toggle("on",!on);$("v3d").classList.toggle("on",on);$("map3d").style.display=on?"block":"none";
+ if(!on){if(M3){const c=M3.getCenter();map.setView([c.lat,c.lng],Math.round(M3.getZoom()+1));}return;}
+ if(!window.maplibregl){try{const l=document.createElement("link");l.rel="stylesheet";l.href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css";document.head.appendChild(l);
+   await cargarScript("https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js");}catch(e){alert("No se pudo cargar el visor 3D (requiere internet).");activar3D(false);return;}}
+ const c=map.getCenter(),dem={type:"raster-dem",tiles:["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],encoding:"terrarium",tileSize:256,maxzoom:15,attribution:"Relieve: AWS Terrain Tiles"};
+ const base=baseActual==="sat"?{tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],attribution:"Esri World Imagery"}:{tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],attribution:"© OpenStreetMap"};
+ listo3d=false;if(M3){marcas3d.forEach(m=>m.remove());marcas3d=[];M3.remove();M3=null;}
+ M3=new maplibregl.Map({container:"map3d",center:[c.lng,c.lat],zoom:map.getZoom()-1,pitch:62,bearing:-25,maxPitch:80,
+  style:{version:8,sources:{base:{type:"raster",tileSize:256,...base},dem,dem2:{...dem}},
+   layers:[{id:"base",type:"raster",source:"base"},{id:"sombreado",type:"hillshade",source:"dem2",paint:{"hillshade-exaggeration":.35}}],
+   terrain:{source:"dem",exaggeration:1}}});
+ M3.addControl(new maplibregl.NavigationControl({visualizePitch:true}),"top-right");
+ M3.on("load",()=>{listo3d=true;actualizar3D();
+  const pts=S.lineas.flatMap(l=>l.est.map(e=>[e.lon,e.lat]));if(pts.length>1){const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+   M3.fitBounds([[Math.min(...xs),Math.min(...ys)],[Math.max(...xs),Math.max(...ys)]],{padding:{top:120,bottom:60,left:60,right:60},pitch:62,bearing:-25,duration:0,maxZoom:16});}});}
+function fc(features){return {type:"FeatureCollection",features};}
+function actualizar3D(){if(!M3||!vista3d||!listo3d||!R)return;const C=COLS();
+ const pisos=e=>e[4]||Math.max(1,Math.round((e[3]||0)/(e[6]||1)));
+ const ed=fc(D.edificaciones.map((e,i)=>{const o=O.ed.get(i),col=o?(e[2]>0?css("--viv"):css("--noviv")):"#c9ced8";
+  return {type:"Feature",properties:{h:Math.max(3,pisos(e)*2.7),c:col},geometry:{type:"Polygon",coordinates:e[0]}};}));
+ const cob=fc(D.manzanas_geo.map((g,i)=>{const a=R.mz[i];if(!a)return null;return {type:"Feature",properties:{c:C[R.est[a.si].li%C.length]},geometry:{type:"Polygon",coordinates:g}};}).filter(Boolean));
+ const faja=fc(O.fajas.map(f=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[f]}})));
+ const est=fc(O.huellas.map(f=>({type:"Feature",properties:{h:V("h_est")+4},geometry:{type:"Polygon",coordinates:[f]}})));
+ // cable en el aire: tramos de 10 m extruidos a la cota de la cuerda entre estaciones (relativa al terreno Copernicus)
+ const cab=[];S.lineas.forEach((l,li)=>{for(let i=0;i<l.est.length-1;i++){const a=l.est[i],b=l.est[i+1],A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat),Lm=dist(A,B),n=Math.max(1,Math.ceil(Lm/10));
+  const za=cota(a.lon,a.lat)+V("h_est"),zb=cota(b.lon,b.lat)+V("h_est");
+  for(let k=0;k<n;k++){const f0=k/n,f1=(k+1)/n,p0=[A[0]+(B[0]-A[0])*f0,A[1]+(B[1]-A[1])*f0],p1=[A[0]+(B[0]-A[0])*f1,A[1]+(B[1]-A[1])*f1],m=toLL((p0[0]+p1[0])/2,(p0[1]+p1[1])/2);
+   const rel=Math.max(1,za+(zb-za)*(f0+f1)/2-cota(m[0],m[1]));
+   cab.push({type:"Feature",properties:{c:C[li%C.length],b:rel-.8,h:rel},geometry:{type:"Polygon",coordinates:[rect(p0,p1,2.5)]}});}}});
+ const src={ed,cob,faja,est,cab:fc(cab)};
+ for(const [k,v] of Object.entries(src)){if(M3.getSource(k))M3.getSource(k).setData(v);else M3.addSource(k,{type:"geojson",data:v});}
+ const capa=(id,def)=>{if(!M3.getLayer(id))M3.addLayer({id,...def});};
+ capa("cob",{type:"fill",source:"cob",paint:{"fill-color":["get","c"],"fill-opacity":.28}});
+ capa("faja",{type:"fill",source:"faja",paint:{"fill-color":css("--faja"),"fill-opacity":.25}});
+ capa("ed",{type:"fill-extrusion",source:"ed",minzoom:13,paint:{"fill-extrusion-color":["get","c"],"fill-extrusion-height":["get","h"],"fill-extrusion-opacity":.9}});
+ capa("est",{type:"fill-extrusion",source:"est",paint:{"fill-extrusion-color":css("--ink"),"fill-extrusion-height":["get","h"],"fill-extrusion-opacity":.85}});
+ capa("cab",{type:"fill-extrusion",source:"cab",paint:{"fill-extrusion-color":["get","c"],"fill-extrusion-base":["get","b"],"fill-extrusion-height":["get","h"]}});
+ marcas3d.forEach(m=>m.remove());marcas3d=S.lineas.flatMap(l=>l.est.map(e=>{const d=document.createElement("div");d.className="lab3d";d.textContent=e.nombre;
+  return new maplibregl.Marker({element:d,anchor:"bottom",offset:[0,-14]}).setLngLat([e.lon,e.lat]).addTo(M3);}));}
+$("v2d").onclick=()=>activar3D(false);$("v3d").onclick=()=>activar3D(true);
+
 // =============================================================== ciclo
 let R=null,O=null,VAL=null,INV=null,timer=null;const PUB=()=>!!(D&&D.meta.publico);
-function render(){clearTimeout(timer);timer=setTimeout(()=>{if(!D)return;dibujarLineas();panelLineas();R=calcular();O=sobrevuelo(R);VAL=valorizar(O);INV=inversion(R,VAL);pintarMapa();panelResultados();perfil();
+function render(){clearTimeout(timer);timer=setTimeout(()=>{if(!D)return;dibujarLineas();panelLineas();R=calcular();O=sobrevuelo(R);VAL=valorizar(O);INV=inversion(R,VAL);pintarMapa();panelResultados();perfil();actualizar3D();
  try{localStorage.setItem(`telef_actual_${PID}`,JSON.stringify(S));}catch(e){}},90);}
 
 // =============================================================== proyectos
@@ -604,11 +672,11 @@ function dibujarNuevo(){capNuevo.clearLayers();if(!nuevo)return;if(nuevo.area.le
 $("npCancelar").onclick=()=>{$("modal").style.display="none";};
 $("npEmpezar").onclick=()=>{const nom=$("npNombre").value.trim();if(!nom){alert("Pon un nombre al proyecto.");return;}
  nuevo={nombre:nom,id:nom.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),area:[]};$("modal").style.display="none";
- setModo("area","Nuevo proyecto: clic en cada vértice del área · «Cerrar área» en el panel izquierdo");
+ setModo("area","Nuevo proyecto: clic en cada vértice del área · clic derecho borra el último · «Cerrar área» en el panel izquierdo");
  const card=document.createElement("div");card.className="card";card.id="cardNuevo";card.innerHTML=`<p class="eyebrow">Nuevo proyecto</p><h3>${nom}</h3><p class="lead">1) Dibuja el área. 2) Dibuja el trazado referencial con «+ Estaciones» sobre el lienzo vacío. 3) Genera la solicitud para el motor.</p>
   <div class="row"><button class="b" id="npCerrar">Cerrar área</button><button class="b" id="npBorrar">Borrar área</button></div><div class="row"><button class="b pri" id="npSolicitud">Generar solicitud</button><button class="b" id="npSalir">Salir</button></div>`;
  document.querySelector(".col.izq").prepend(card);
- $("npCerrar").onclick=()=>{if(nuevo.area.length<3){alert("El área necesita al menos 3 vértices.");return;}setModo(null);S.lineas=[{nombre:"Referencial 1",est:[]}];S.activa=0;render();setModo("agregar","Trazado referencial: clic para agregar estaciones");};
+ $("npCerrar").onclick=()=>{if(nuevo.area.length<3){alert("El área necesita al menos 3 vértices.");return;}setModo(null);S.lineas=[{nombre:"Referencial 1",est:[]}];S.activa=0;render();setModo("agregar","Trazado referencial: clic agrega una estación · clic derecho borra la última");};
  $("npBorrar").onclick=()=>{nuevo.area=[];dibujarNuevo();setModo("area","Nuevo proyecto: clic en cada vértice del área");};
  $("npSalir").onclick=()=>{nuevo=null;capNuevo.clearLayers();card.remove();setModo(null);};
  $("npSolicitud").onclick=()=>{if(nuevo.area.length<3){alert("Primero dibuja y cierra el área.");return;}const ring=[...nuevo.area,nuevo.area[0]];
@@ -619,8 +687,8 @@ $("npEmpezar").onclick=()=>{const nom=$("npNombre").value.trim();if(!nom){alert(
 
 // =============================================================== controles
 $("bRef").onclick=()=>cargarReferencial();$("bVacio").onclick=()=>lienzoVacio();
-$("bNuevaLinea").onclick=()=>{S.lineas.push({nombre:`Línea ${S.lineas.length+1}`,est:[]});S.activa=S.lineas.length-1;setModo("agregar","Clic en el mapa para agregar estaciones · clic de nuevo en «+ Estaciones» para terminar");render();};
-$("bAgregar").onclick=()=>{if(modo==="agregar")setModo(null);else setModo("agregar","Clic en el mapa para agregar estaciones · clic de nuevo en «+ Estaciones» para terminar");};
+$("bNuevaLinea").onclick=()=>{S.lineas.push({nombre:`Línea ${S.lineas.length+1}`,est:[]});S.activa=S.lineas.length-1;setModo("agregar","Clic agrega una estación · clic derecho borra la última · «+ Estaciones» para terminar");render();};
+$("bAgregar").onclick=()=>{if(modo==="agregar")setModo(null);else setModo("agregar","Clic agrega una estación · clic derecho borra la última · «+ Estaciones» para terminar");};
 $("bRadioTodas").onclick=()=>{S.lineas.forEach(l=>l.est.forEach(e=>delete e.r));render();};
 $("bGuardar").onclick=()=>{const nom=$("nomTraz").value.trim();if(!nom){alert("Escribe un nombre para el trazado.");return;}const t=trazadosGuardados();
  if(t[nom]&&!confirm(`Ya existe «${nom}». ¿Reemplazarlo?`))return;t[nom]={...clonar(S),params:Object.fromEntries(Object.entries(P).map(([k,p])=>[k,p.v])),fecha:new Date().toISOString()};guardarTrazados(t);panelTrazados();};
@@ -632,7 +700,7 @@ $("themeBtn").onclick=()=>setTheme(document.documentElement.getAttribute("data-t
 window.addEventListener("resize",()=>{if(R)perfil();});
 try{if(localStorage.getItem("theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");$("themeBtn").textContent="☀";}}catch(e){}
 armarParams();aplicarBase();map.setView([-36.71,-73.13],14);cargarIndice();
-window.__estado=()=>({S,R,O,VAL,INV,PID});
+window.__estado=()=>({S,R,O,VAL,INV,PID,M3});
 </script>
 </body>
 </html>

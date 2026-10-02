@@ -51,6 +51,7 @@ PBF = RMG / "Red Vial de Chile/data/raw/osm/chile-latest.osm.pbf"
 DEM_DIR = RAIZ / "datos/crudo/dem"
 GDAL = Path(r"C:\Program Files\QGIS 3.44.11\bin")
 ND = 6
+EDADES = ["n_edad_0_5", "n_edad_6_13", "n_edad_14_17", "n_edad_18_24", "n_edad_25_44", "n_edad_45_59", "n_edad_60_mas"]
 
 
 def norm(s):
@@ -80,13 +81,14 @@ def manzanas(cuts, marco_4326):
     lista = ",".join(str(int(c)) for c in cuts)
     df = con.execute(f"""
         select lpad(cast(cast(MANZENT as bigint) as varchar),14,'0') manzent, CUT cut,
-               n_per, n_hog, n_vp, n_vp_ocupada, ST_AsWKB(SHAPE) w
+               n_per, n_hog, n_vp, n_vp_ocupada, n_edad_0_5, n_edad_6_13, n_edad_14_17, n_edad_18_24,
+               n_edad_25_44, n_edad_45_59, n_edad_60_mas, ST_AsWKB(SHAPE) w
         from '{CENSO.as_posix()}' where CUT in ({lista})""").df()
     g = gpd.GeoDataFrame(df.drop(columns="w"), geometry=gpd.GeoSeries.from_wkb(df.w.apply(bytes)), crs=4674)
     g = g.set_crs(4326, allow_override=True)          # SIRGAS ≈ WGS84: identidad
     g["geometry"] = g.geometry.make_valid()
     g = g[g.intersects(marco_4326)].copy()
-    for col in ["n_per", "n_hog", "n_vp", "n_vp_ocupada"]:
+    for col in ["n_per", "n_hog", "n_vp", "n_vp_ocupada"] + EDADES:
         g[col] = pd.to_numeric(g[col], errors="coerce")   # '*' secreto estadístico → NULL
     return g
 
@@ -314,7 +316,8 @@ def empaquetar(cfg, area, mz, pr, ed, fuente_ed, red, dm, valores, utm, faltan):
     mz = mz.assign(nodo=j, enganche_m=d.round(1))
     nn = lambda v, f=int: None if pd.isna(v) else f(v)
     manzanas = [[r.lon, r.lat, nn(r.n_per), nn(r.n_hog), nn(r.n_vp), nn(r.per_viv, lambda x: round(float(x), 2)),
-                 int(r.nodo), float(r.enganche_m), int(r.en_area)] for r in mz.itertuples()]
+                 int(r.nodo), float(r.enganche_m), int(r.en_area),
+                 [nn(getattr(r, c)) for c in EDADES]] for r in mz.itertuples()]   # [9]: tramos de edad (censo 2024)
     manzanas_geo = [anillos(g) for g in simplificar(mz[["geometry"]], 1.0, utm).geometry]
 
     # viviendas por edificio (regla volumétrica, contrastada contra la DGC: 61 vs 64)
