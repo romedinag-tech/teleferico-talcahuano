@@ -636,14 +636,14 @@ $("v2d").onclick=()=>activar3D(false);$("v3d").onclick=()=>activar3D(true);
 // =============================================================== ciclo
 let R=null,O=null,VAL=null,INV=null,timer=null;const PUB=()=>!!(D&&D.meta.publico);
 function render(){clearTimeout(timer);timer=setTimeout(()=>{if(!D)return;dibujarLineas();panelLineas();R=calcular();O=sobrevuelo(R);VAL=valorizar(O);INV=inversion(R,VAL);pintarMapa();panelResultados();perfil();actualizar3D();
- try{localStorage.setItem(`telef_actual_${PID}`,JSON.stringify(S));}catch(e){}},90);}
+ if(!nuevo){try{localStorage.setItem(`telef_actual_${PID}`,JSON.stringify(S));}catch(e){}}},90);}
 
 // =============================================================== proyectos
 async function cargarIndice(){try{INDICE=await (await fetch("proyectos/index.json?v="+VERSION)).json();}catch(e){$("projbar").insertAdjacentHTML("beforeend",`<span class="nota">No se pudo leer proyectos/index.json — abre la herramienta desde un servidor (GitHub Pages o el servidor local), no como archivo.</span>`);return;}
  const pb=$("projbar");INDICE.proyectos.forEach(p=>{const b=document.createElement("button");b.textContent=p.nombre;b.dataset.id=p.id;if(!p.listo){b.disabled=true;b.title="El motor aún no procesa este proyecto";}b.onclick=()=>abrirProyecto(p.id);pb.appendChild(b);});
  const nb=document.createElement("button");nb.className="nuevo";nb.textContent="+ Nuevo proyecto";nb.onclick=()=>{$("modal").style.display="flex";};pb.appendChild(nb);
  const q=new URLSearchParams(location.search).get("p"),pid=(INDICE.proyectos.find(p=>p.id===q&&p.listo)||INDICE.proyectos.find(p=>p.listo)||{}).id;if(pid)abrirProyecto(pid);}
-async function abrirProyecto(pid){$("tituloRes").textContent="Cargando…";
+async function abrirProyecto(pid){salirNuevo(false);if(vista3d)activar3D(false);$("tituloRes").textContent="Cargando…";
  try{D=await (await fetch(`proyectos/${pid}.json?v=${VERSION}`)).json();}catch(e){$("tituloRes").textContent="No se pudo cargar el proyecto";return;}
  PID=pid;document.querySelectorAll(".projbar button[data-id]").forEach(b=>b.classList.toggle("on",b.dataset.id===pid));
  history.replaceState(null,"","?p="+pid);document.title=`${D.meta.nombre} · Trazados de teleférico`;
@@ -652,22 +652,25 @@ async function abrirProyecto(pid){$("tituloRes").textContent="Cargando…";
  let ok=false;try{const j=JSON.parse(localStorage.getItem(`telef_actual_${pid}`)||"null");if(j&&j.lineas&&j.lineas.length){S=j;ok=true;}}catch(e){}
  panelTrazados();if(ok)render();else cargarReferencial();}
 // nuevo proyecto
+let respaldoS=null;
+function salirNuevo(restituir){if(!nuevo)return;nuevo=null;capNuevo.clearLayers();const c=$("cardNuevo");if(c)c.remove();setModo(null);
+ if(restituir&&respaldoS){S=respaldoS;}respaldoS=null;}
 function dibujarNuevo(){capNuevo.clearLayers();if(!nuevo)return;if(nuevo.area.length)L.polygon(nuevo.area.map(p=>[p[1],p[0]]),{color:css("--accent"),weight:2,dashArray:"6 4",fillOpacity:.06}).addTo(capNuevo);}
 $("npCancelar").onclick=()=>{$("modal").style.display="none";};
 $("npEmpezar").onclick=()=>{const nom=$("npNombre").value.trim();if(!nom){alert("Pon un nombre al proyecto.");return;}
- nuevo={nombre:nom,id:nom.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),area:[]};$("modal").style.display="none";
+ respaldoS=clonar(S);nuevo={nombre:nom,id:nom.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),area:[]};$("modal").style.display="none";
  setModo("area","Nuevo proyecto: clic en cada vértice del área · clic derecho borra el último · «Cerrar área» en el panel izquierdo");
  const card=document.createElement("div");card.className="card";card.id="cardNuevo";card.innerHTML=`<p class="eyebrow">Nuevo proyecto</p><h3>${nom}</h3><p class="lead">1) Dibuja el área. 2) Dibuja el trazado referencial con «+ Estaciones» sobre el lienzo vacío. 3) Genera la solicitud para el motor.</p>
   <div class="row"><button class="b" id="npCerrar">Cerrar área</button><button class="b" id="npBorrar">Borrar área</button></div><div class="row"><button class="b pri" id="npSolicitud">Generar solicitud</button><button class="b" id="npSalir">Salir</button></div>`;
  document.querySelector(".col.izq").prepend(card);
  $("npCerrar").onclick=()=>{if(nuevo.area.length<3){alert("El área necesita al menos 3 vértices.");return;}setModo(null);S.lineas=[{nombre:"Referencial 1",est:[]}];S.activa=0;render();setModo("agregar","Trazado referencial: clic agrega una estación · clic derecho borra la última");};
  $("npBorrar").onclick=()=>{nuevo.area=[];dibujarNuevo();setModo("area","Nuevo proyecto: clic en cada vértice del área");};
- $("npSalir").onclick=()=>{nuevo=null;capNuevo.clearLayers();card.remove();setModo(null);};
+ $("npSalir").onclick=()=>{salirNuevo(true);render();};
  $("npSolicitud").onclick=()=>{if(nuevo.area.length<3){alert("Primero dibuja y cierra el área.");return;}const ring=[...nuevo.area,nuevo.area[0]];
   const sol={id:nuevo.id,nombre:nuevo.nombre,area:{type:"Polygon",coordinates:[ring]},referencial:{lineas:S.lineas.filter(l=>incl(l)&&l.est.length>1).map(l=>({nombre:l.nombre,estaciones:l.est.map(e=>[+e.lon.toFixed(6),+e.lat.toFixed(6),e.nombre])}))},
    centro:S.centro?[S.centro.lon,S.centro.lat]:null,solicitado:new Date().toISOString()};
   const b=new Blob([JSON.stringify(sol,null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`solicitud_${nuevo.id}.json`;a.click();
-  alert(`Solicitud descargada: solicitud_${nuevo.id}.json\n\nDéjala en la carpeta solicitudes/ del proyecto y corre:\npython -X utf8 scripts/motor_proyecto.py --solicitudes`);};};
+  alert(`Solicitud descargada: solicitud_${nuevo.id}.json\n\nDéjala en la carpeta solicitudes/ del proyecto y corre:\npython -X utf8 scripts/motor_proyecto.py --solicitudes\n\nAl hacer clic en la pestaña de un proyecto vuelves a su trazado.`);};};
 
 // =============================================================== controles
 $("bRef").onclick=()=>cargarReferencial();$("bVacio").onclick=()=>lienzoVacio();
