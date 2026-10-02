@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trazados de teleférico</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 8 L30 4' stroke='%2316365a' stroke-width='2'/%3E%3Crect x='11' y='10' width='10' height='12' rx='2' fill='%231F6FEB'/%3E%3Cpath d='M16 6 V10' stroke='%2316365a' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:wght@600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>/*__LEAFLET_CSS__*/</style>
+<style>
+/* ---- tokens: estándar Goro (tema-goro.css) ---- */
+:root{--paper:#FBFBFD;--surface:#FFFFFF;--surface-alt:#F4F6F9;--line:#E3E8EF;--line-2:#D6DEE9;--ink:#0E2338;--ink-mid:#4A5A70;--ink-lo:#7C8AA0;
+--navy:#16365a;--navy2:#21507F;--accent:#1F6FEB;--focus:#1F6FEB;--grad:linear-gradient(135deg,#0E2338 0%,#16365a 60%,#21507F 100%);
+--or:#C55A11;--green:#2E8B57;--red:#B2182B;--warn:#B45309;
+--r:14px;--r-sm:10px;--sh-sm:0 1px 2px rgba(14,35,56,.04),0 1px 3px rgba(14,35,56,.04);--sh:0 1px 3px rgba(14,35,56,.05),0 8px 24px rgba(14,35,56,.05);
+--font-display:'Source Serif 4',Georgia,serif;--font-ui:'Inter',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;--font-data:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+/* categórica de líneas (Okabe-Ito, apta para daltonismo) y codificación de afectación */
+--c1:#0072B2;--c2:#D55E00;--c3:#009E73;--c4:#CC79A7;--c5:#E69F00;--viv:#B2182B;--noviv:#E69F00;--faja:#B2182B;--terreno:#7C5A2E;--cable:#0E2338}
+:root[data-theme="dark"]{--paper:#0a0d13;--surface:#151c27;--surface-alt:#1a212c;--line:#232c3a;--line-2:#2b3547;--ink:#e9eef5;--ink-mid:#8a93a5;--ink-lo:#6b7382;
+--navy:#ff6a1a;--navy2:#ff9d2f;--accent:#ff6a1a;--focus:#ff9d2f;--or:#ff9d2f;--grad:linear-gradient(135deg,#12161f 0%,#0d1119 60%,#161d28 100%);
+--sh-sm:0 1px 2px rgba(0,0,0,.5);--sh:0 8px 22px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.5);--card-grad:linear-gradient(180deg,#1a212c 0%,#11161f 100%);
+--led:0 0 6px rgba(255,150,40,.85),0 0 16px rgba(255,106,26,.55);--c1:#56B4E9;--terreno:#C9A66B;--cable:#e9eef5;--warn:#ff9d2f}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);font:13px/1.45 var(--font-ui);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.num{font-family:var(--font-data)}
+/* ---- layout ---- */
+#app{display:grid;grid-template-rows:auto auto 1fr;height:100vh}
+.apptop{position:relative;display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 20px;background:var(--grad);color:#fff;text-align:center}
+.apptop .title{font-family:var(--font-display);font-weight:700;font-size:1.2rem;line-height:1.1}
+.apptop .sub{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;opacity:.8;font-weight:600}
+.apptop .right{position:absolute;right:20px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28)}
+.badge .led{width:8px;height:8px;border-radius:50%;background:#7CF2A7;box-shadow:var(--led,none)}
+.hdr-btn{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:1rem}
+.projbar{display:flex;align-items:center;justify-content:center;gap:4px;padding:0 16px;position:relative;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto}
+.projbar .lab{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-lo);font-weight:600;margin-right:8px;white-space:nowrap}
+.projbar button{border:none;background:none;padding:11px 14px;cursor:pointer;font:600 .9rem var(--font-ui);color:var(--ink-mid);border-bottom:3px solid transparent;white-space:nowrap}
+.projbar button.on,.projbar button:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.projbar button.nuevo{color:var(--accent);border-left:1px solid var(--line);margin-left:8px}
+.projbar button[disabled]{opacity:.45;cursor:not-allowed}
+.cuerpo{display:grid;grid-template-columns:1fr 2fr 1fr;min-height:0}
+.col{overflow-y:auto;padding:14px;min-height:0}
+.col.izq{border-right:1px solid var(--line);background:var(--surface-alt)}
+.col.der{border-left:1px solid var(--line);background:var(--surface-alt)}
+.centro{display:grid;grid-template-rows:1fr 230px;min-height:0}
+#map{min-height:0}
+#perfil{border-top:1px solid var(--line);background:var(--surface);padding:8px 12px;min-height:0;display:flex;flex-direction:column}
+#perfil svg{flex:1;width:100%;min-height:0}
+/* ---- tarjetas ---- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-sm);margin-bottom:12px}
+:root[data-theme="dark"] .card{background-image:var(--card-grad)}
+.card h3{font:600 1rem/1.25 var(--font-display);margin:0 0 2px;text-align:center}
+.card>.eyebrow{text-align:center}
+.card .lead{color:var(--ink-mid);font-size:.78rem;margin:0 0 8px}
+.eyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:.66rem;font-weight:600;color:var(--ink-lo);margin:0 0 4px}
+button.b{font:600 .8rem var(--font-ui);border:1px solid var(--line-2);background:var(--surface);color:var(--ink);padding:6px 10px;border-radius:8px;cursor:pointer}
+button.b:hover{border-color:var(--accent);color:var(--accent)}
+button.b.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button.b.pri{background:var(--navy);border-color:var(--navy);color:#fff}
+button.x{border:none;background:none;color:var(--ink-lo);cursor:pointer;font-size:.95rem;padding:2px 4px}
+button.x:hover{color:var(--red)}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}
+input[type=text],input[type=number],select{font:500 .82rem var(--font-ui);color:var(--ink);background:var(--surface);border:1px solid var(--line-2);border-radius:7px;padding:5px 7px;width:100%}
+input[type=number]{font-family:var(--font-data)}
+.grid2{display:grid;grid-template-columns:1fr 84px;gap:5px 8px;align-items:center}
+.grid2 label{color:var(--ink-mid);font-size:.78rem}
+.lista .it{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:8px;border:1px solid transparent;cursor:pointer}
+.lista .it:hover{background:var(--surface-alt)}
+.lista .it.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.sw{width:11px;height:11px;border-radius:3px;flex:none}
+.est{display:grid;grid-template-columns:18px 1fr 64px 46px 22px;gap:4px;align-items:center;padding:3px 0;border-bottom:1px dashed var(--line)}
+.est input{padding:3px 5px;font-size:.78rem}
+.ang{font-family:var(--font-data);font-size:.72rem;text-align:right}
+.warn{color:var(--warn);font-weight:600}.bad{color:var(--red);font-weight:600}.mut{color:var(--ink-lo)}
+/* ---- resultados ---- */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px}
+.kpi .v{font:700 1.25rem/1.1 var(--font-data);color:var(--navy)}
+.kpi .l{font-size:.72rem;color:var(--ink-mid);margin-top:2px}
+.kpi.full{grid-column:1/3}
+table{border-collapse:collapse;width:100%;font-size:.74rem}
+th,td{padding:4px 4px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--ink-lo);font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.03em}
+td{font-family:var(--font-data)}
+th:first-child,td:first-child{text-align:left;font-family:var(--font-ui)}
+tr.tot td{font-weight:700;border-top:1.5px solid var(--ink-lo)}
+.nota{color:var(--ink-mid);font-size:.72rem;margin-top:6px}
+.pend{color:var(--ink-lo);font-style:italic}
+details.method{margin-top:8px}details.method summary{cursor:pointer;font:600 .85rem var(--font-display);color:var(--ink)}
+details.method p{font-size:.75rem;color:var(--ink-mid);margin:6px 0}
+/* ---- mapa ---- */
+.leaflet-container{background:var(--surface-alt);font-family:var(--font-ui)}
+:root[data-theme="dark"] .tesela-mapa{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9) saturate(.35)}
+.leyenda label{font-size:11px;cursor:pointer}.leyenda b{margin-top:2px}
+.etq{background:var(--surface);color:var(--ink);border:1px solid var(--line-2);border-radius:5px;padding:1px 5px;font:600 11px var(--font-ui);box-shadow:var(--sh-sm)}
+.angtag{font:700 11px var(--font-data);padding:1px 5px;border-radius:5px;background:var(--surface);border:1.5px solid var(--ink-lo);color:var(--ink);white-space:nowrap}
+.angtag.warn{border-color:var(--warn);color:var(--warn)}.angtag.bad{border-color:var(--red);color:var(--red)}
+.leyenda{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:11px;box-shadow:var(--sh);line-height:1.6}
+.leyenda b{font:600 11px var(--font-ui);display:block;margin-bottom:2px}
+.leyenda i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.modo{position:absolute;z-index:1000;top:10px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:6px 12px;border-radius:999px;font-weight:600;font-size:.8rem;box-shadow:var(--sh);display:none}
+/* ---- modal nuevo proyecto ---- */
+.modal{position:fixed;inset:0;background:rgba(10,13,19,.45);display:none;align-items:center;justify-content:center;z-index:5000}
+.modal .card{width:min(520px,92vw)}
+ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+@media (max-width:1100px){.cuerpo{grid-template-columns:1fr;grid-template-rows:auto 70vh auto}.col{overflow:visible}.centro{grid-template-rows:1fr 220px}}
+</style>
+</head>
+<body>
+<div id="app">
+ <header class="apptop">
+  <div><div class="title">Trazados de teleférico</div><div class="sub">Herramienta de análisis de trazados urbanos por cable</div></div>
+  <div class="right"><span class="badge" id="badge"><span class="led"></span><span id="badgeTxt">Cargando…</span></span>
+   <button class="hdr-btn" id="themeBtn" title="Tema claro / oscuro" aria-label="Cambiar tema">☾</button></div>
+ </header>
+ <nav class="projbar" id="projbar" aria-label="Proyectos"><span class="lab">Proyectos</span></nav>
+ <main class="cuerpo">
+  <!-- ============ INPUTS ============ -->
+  <aside class="col izq" aria-label="Variables de entrada">
+   <div class="card">
+    <p class="eyebrow">Trazado</p><h3>Trazados guardados</h3>
+    <p class="lead">Guarda el trazado actual con un nombre y vuelve a cargarlo cuando quieras (se guarda en este navegador).</p>
+    <div class="row"><input type="text" id="nomTraz" placeholder="Nombre del trazado"><button class="b pri" id="bGuardar">Guardar</button></div>
+    <div class="lista" id="listaTraz"></div>
+    <div class="row"><button class="b" id="bRef">Cargar referencial</button><button class="b" id="bVacio">Lienzo vacío</button></div>
+    <div class="row"><button class="b" id="bExp">Exportar JSON</button><button class="b" id="bImp">Importar JSON</button><input type="file" id="fImp" accept=".json" hidden></div>
+   </div>
+   <div class="card">
+    <p class="eyebrow">Red</p><h3>Líneas y estaciones</h3>
+    <p class="lead">Lo óptimo es una línea recta: el ángulo de cada quiebre se marca en el mapa. Clic sobre una línea inserta una estación; arrastra para mover.</p>
+    <div class="lista" id="listaLineas"></div>
+    <div class="row"><button class="b" id="bNuevaLinea">+ Línea</button><button class="b" id="bAgregar">+ Estaciones (clic en mapa)</button></div>
+    <div id="listaEst"></div>
+   </div>
+   <div class="card">
+    <p class="eyebrow">Cobertura</p><h3>Área de influencia</h3>
+    <p class="lead">Radio de cobertura por estación. Se ajusta aquí o arrastrando el punto del borde del círculo en el mapa.</p>
+    <div class="grid2" id="pCob"></div>
+    <div class="row"><button class="b" id="bRadioTodas">Aplicar radio a todas</button></div>
+   </div>
+   <div class="card"><p class="eyebrow">Operación</p><h3>Sistema y caminata</h3><div class="grid2" id="pOp"></div></div>
+   <div class="card"><p class="eyebrow">Sobrevuelo y costos</p><h3>Faja, estaciones y valores</h3><div class="grid2" id="pCost"></div></div>
+  </aside>
+  <!-- ============ MAPA + CORTE ============ -->
+  <section class="centro" aria-label="Mapa y corte">
+   <div style="position:relative;min-height:0"><div id="map" style="position:absolute;inset:0"></div><div class="modo" id="modo"></div></div>
+   <div id="perfil"><div class="eyebrow" id="perfilTit">Corte topográfico</div><svg id="svgPerfil" role="img" aria-label="Corte topográfico de la línea activa"></svg></div>
+  </section>
+  <!-- ============ OUTPUTS ============ -->
+  <aside class="col der" aria-label="Resultados">
+   <div class="card"><p class="eyebrow">Resultados</p><h3 id="tituloRes">Resumen del trazado</h3><div class="kpis" id="kpis"></div></div>
+   <div class="card"><p class="eyebrow">Inversión</p><h3>Presupuesto estimado</h3>
+    <p class="lead">Proporcional a las partidas del anteproyecto P178 (UF dic-2024), recalculado con el largo, las estaciones y los ángulos del trazado.</p><div id="tInv"></div></div>
+   <div class="card"><p class="eyebrow">Tiempos</p><h3>Puerta a puerta al centro</h3>
+    <p class="lead">Minutos, promedio ponderado por población de las manzanas que usan cada estación.</p><div id="tTiempos"></div>
+    <div class="nota">Bus: <span class="pend">pendiente — matriz H3 r9 encargada al motor de transporte público.</span></div></div>
+   <div class="card"><p class="eyebrow">Geometría</p><h3>Tramos</h3><div id="tTramos"></div></div>
+   <div class="card"><p class="eyebrow">Sobrevuelo</p><h3>Expropiación por escenario</h3>
+    <p class="lead">E1: se expropia la faja. E2: norma complementada que permite el sobrevuelo (sólo estaciones).</p><div id="tExp"></div></div>
+   <div class="card"><p class="eyebrow">Transparencia</p><h3>Método y fuentes</h3>
+    <details class="method"><summary>Cómo se calcula</summary>
+     <p><b>Cobertura.</b> Isócrona por la red peatonal OSM (incluye pasajes y escaleras) con velocidad corregida por pendiente (Tobler, normalizada a la velocidad en plano), o radio euclidiano. Cada manzana se asigna a la estación con menor tiempo total al centro.</p>
+     <p><b>Tiempo.</b> Acceso + ½ intervalo + viaje (largo inclinado / velocidad + tiempo de estación por tramo, como en el P246) + transbordos + egreso a pie desde la estación destino hasta ★.</p>
+     <p><b>Sobrevuelo.</b> Faja de ancho fijo bajo cada tramo y huella rectangular por estación. Viviendas por edificio: huella × pisos ÷ m² por vivienda del lote (multivivienda) o roles del lote (casas). Contraste con la DGC sobre el anteproyecto: 61 vs 64 viviendas en T1, 69 vs 74 terrenos en T2.</p>
+     <p><b>Valores.</b> Medianas de UF/m² de escrituras SII F2890 2015–2025 del área (suelo: casas; cota baja: sitios eriazos). Casa afectada → lote completo (≤ 2.000 m²); condominio → cuota de suelo; resto → superficie intersectada.</p>
+     <p><b>Inversión.</b> Costos unitarios del presupuesto del anteproyecto P178: electromecánica por tipo de estación, torres y cables por metro, cabinas por metro y estación; arquitectura, instalaciones eléctricas y obras urbanas por estación; recargo por ángulo según P246 Cuadro 1.2-5; GG y U 35 %, IVA 19 %.</p>
+     <p><b>Corte.</b> Copernicus GLO-30 (≈ 3 m bajo las cotas del P178). El cable se dibuja como cuerda recta entre estaciones; en naranja, donde el gálibo no alcanza y harían falta torres.</p>
+    </details>
+    <p class="nota" id="fuentes"></p></div>
+  </aside>
+ </main>
+</div>
+<div class="modal" id="modal"><div class="card">
+ <p class="eyebrow">Nuevo proyecto</p><h3>Definir área de estudio y trazado referencial</h3>
+ <ol class="pasos"><li>Nombre del proyecto.</li><li>Dibuja el área: clic en cada vértice y «Cerrar área».</li><li>Dibuja el trazado referencial con «+ Estaciones».</li><li>«Generar solicitud»: se descarga un JSON. Déjalo en <code>solicitudes/</code> y corre <code>python -X utf8 scripts/motor_proyecto.py --solicitudes</code>; el motor incorpora censo, catastro SII, edificaciones, red peatonal, topografía y valores.</li></ol>
+ <div class="row"><input type="text" id="npNombre" placeholder="Nombre del proyecto (p. ej. Teleférico de Valparaíso)"></div>
+ <div class="row"><button class="b pri" id="npEmpezar">Empezar a dibujar</button><button class="b" id="npCancelar">Cancelar</button></div>
+</div></div>
+
+<script>/*__LEAFLET_JS__*/</script>
+<script>/*__TURF_JS__*/</script>
+<script>
+"use strict";
+const VERSION = "/*__VERSION__*/";
+let D=null, PID=null, INDICE=null;
+const $=id=>document.getElementById(id);
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const COLS=()=>["--c1","--c2","--c3","--c4","--c5"].map(css);
+function fmt(x,d=0){return x==null||!isFinite(x)?"—":x.toLocaleString("es-CL",{maximumFractionDigits:d,minimumFractionDigits:d});}
+
+// =============================================================== parámetros
+const P={
+ // cobertura
+ cob_modo:{v:"red",l:"Modo de cobertura",g:"pCob",t:"sel",o:[["red","Red peatonal (isócrona)"],["radio","Radio euclidiano"]]},
+ radio:{v:660,l:"Radio por defecto (m)",g:"pCob",n:"660 m ≈ 10 min a 1,1 m/s (P178)"},
+ // operación
+ v_linea:{v:6,l:"Velocidad de línea (m/s)",g:"pOp",n:"P178 Cap 24"},
+ t_est:{v:50,l:"Tiempo en estación (s)",g:"pOp",n:"P246 Cuadro 1.2-3"},
+ intervalo:{v:13.8,l:"Intervalo entre cabinas (s)",g:"pOp",n:"P178"},
+ t_transb:{v:120,l:"Transbordo (s)",g:"pOp",n:"supuesto"},
+ v_cam:{v:1.1,l:"Caminata en plano (m/s)",g:"pOp",n:"CONASET"},
+ tobler:{v:"1",l:"Corregir por pendiente",g:"pOp",t:"sel",o:[["1","Sí (Tobler)"],["0","No"]]},
+ ang_lim:{v:8,l:"Ángulo máx. sin circuito (°)",g:"pOp",n:"BMDV 8°, Colombia 10°"},
+ // sobrevuelo y costos
+ faja:{v:15,l:"Ancho de faja (m)",g:"pCost",n:"P178 §14.1.5"},
+ est_largo:{v:51,l:"Estación: largo (m)",g:"pCost",n:"Tel-Thno.kmz"},
+ est_ancho:{v:24,l:"Estación: ancho (m)",g:"pCost",n:"Tel-Thno.kmz"},
+ h_est:{v:8,l:"Cable sobre estación (m)",g:"pCost",n:"supuesto"},
+ galibo:{v:10,l:"Gálibo mínimo (m)",g:"pCost",n:"supuesto"},
+ suelo:{v:"central",l:"Valor del suelo",g:"pCost",t:"sel",o:[["central","Central (casas)"],["bajo","Bajo (eriazos)"]]},
+ torres_km:{v:7.4,l:"Torres por km",g:"pCost",n:"P178: 31 torres / 4,18 km"},
+ uf_clp:{v:38416.69,l:"Valor UF ($)",g:"pCost",n:"31-12-2024 (P178)"}
+};
+const V=k=>+P[k].v;
+
+// =============================================================== costos unitarios (P178, UF costo directo)
+// Electromecánica (14_P178-TEL_TEL.xlsx): por línea y por estación; arquitectura (05_ARQ): por estación;
+// eléctricas (15_ELEC): por estación-línea; obras urbanas (Cuadro 1.2-11 ítems 1-3, 6-13): por estación física.
+const CU={motriz:116183,retorno:67580,intermedia:62178,garaje:45851,torre_km:39885/7.4,cable_com_m:4.72,cable_port_m:8.04,
+ cab_m:39.58,cab_est:20030,herr_base:18624,herr_m:7.13,montaje:0.0622,
+ arq_extremo:44682,arq_intermedia:42733,arq_transbordo:67701,estructura_est:1756,elec_est_linea:16154,urbanas_est:36490,gg:0.35,iva:0.19};
+// recargo por ángulo (P246 Cuadro 1.2-5, punto medio del rango) sobre electromecánica y arquitectura de la estación
+function recargoAng(a){a=Math.abs(a);const t=[[5,.03],[10,.065],[15,.11],[20,.17],[25,.245],[30,.335],[35,.445],[40,.58]];for(const [lim,r] of t)if(a<lim)return r;return .65;}
+
+// =============================================================== geometría
+let LAT0=-36.7,LON0=-73.1,KX=1,KY=110540;
+function fijarOrigen(lon,lat){LAT0=lat;LON0=lon;KX=111320*Math.cos(lat*Math.PI/180);}
+const toXY=(lon,lat)=>[(lon-LON0)*KX,(lat-LAT0)*KY], toLL=(x,y)=>[x/KX+LON0,y/KY+LAT0], dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+function cota(lon,lat){const d=D.dem,nf=d.z.length,nc=d.z[0].length;let c=(lon-d.xll)/d.cell-.5,f=(d.yll+nf*d.cell-lat)/d.cell-.5;
+ const c0=Math.max(0,Math.min(nc-2,Math.floor(c))),f0=Math.max(0,Math.min(nf-2,Math.floor(f)));const dc=Math.max(0,Math.min(1,c-c0)),df=Math.max(0,Math.min(1,f-f0));
+ return d.z[f0][c0]*(1-dc)*(1-df)+d.z[f0][c0+1]*dc*(1-df)+d.z[f0+1][c0]*(1-dc)*df+d.z[f0+1][c0+1]*dc*df;}
+
+// =============================================================== grafo peatonal e índices
+let G,NIDX,IE,IP;const CEL=100;
+function prepararDatos(){
+ const a=D.area,cx=a.reduce((s,p)=>s+p[0],0)/a.length,cy=a.reduce((s,p)=>s+p[1],0)/a.length;fijarOrigen(cx,cy);
+ G={n:D.grafo.n,xy:D.grafo.n.map(p=>toXY(p[0],p[1])),adj:D.grafo.n.map(()=>[])};for(const [x,y,L] of D.grafo.e){G.adj[x].push([y,L]);G.adj[y].push([x,L]);}
+ NIDX={};G.xy.forEach((p,i)=>{const k=Math.floor(p[0]/CEL)+","+Math.floor(p[1]/CEL);(NIDX[k]=NIDX[k]||[]).push(i);});
+ IE=indexar(D.edificaciones);IP=indexar(D.predios);
+}
+function nodoCercano(xy){let best=-1,bd=1e9;const cx=Math.floor(xy[0]/CEL),cy=Math.floor(xy[1]/CEL);
+ for(let r=0;r<8&&best<0;r++)for(let i=cx-r;i<=cx+r;i++)for(let j=cy-r;j<=cy+r;j++)for(const n of (NIDX[i+","+j]||[])){const d=dist(xy,G.xy[n]);if(d<bd){bd=d;best=n;}}
+ return [best,bd];}
+const vel=s=>P.tobler.v==="1"?V("v_cam")*Math.exp(-3.5*Math.abs(s+.05))/Math.exp(-3.5*.05):V("v_cam");
+function dijkstra(fuente,tope){const N=G.n.length,t=new Float64Array(N).fill(Infinity),[n0,d0]=nodoCercano(fuente);if(n0<0)return t;
+ t[n0]=d0/V("v_cam");const H=[[t[n0],n0]];
+ const push=e=>{H.push(e);let i=H.length-1;while(i>0){const p=(i-1)>>1;if(H[p][0]<=H[i][0])break;[H[p],H[i]]=[H[i],H[p]];i=p;}};
+ const pop=()=>{const top=H[0],last=H.pop();if(H.length){H[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<H.length&&H[l][0]<H[m][0])m=l;if(r<H.length&&H[r][0]<H[m][0])m=r;if(m===i)break;[H[m],H[i]]=[H[i],H[m]];i=m;}}return top;};
+ while(H.length){const [tu,u]=pop();if(tu>t[u]||tu>tope)continue;
+  for(const [v,L] of G.adj[u]){const s=-(G.n[v][2]-G.n[u][2])/L;const tv=tu+L/vel(s);if(tv<t[v]){t[v]=tv;push([tv,v]);}}}  // tiempo de caminar HACIA la fuente
+ return t;}
+function bboxR(rings){const a=[1e9,1e9,-1e9,-1e9];for(const r of rings)for(const p of r){const q=toXY(p[0],p[1]);a[0]=Math.min(a[0],q[0]);a[1]=Math.min(a[1],q[1]);a[2]=Math.max(a[2],q[0]);a[3]=Math.max(a[3],q[1]);}return a;}
+function indexar(l){const idx={},bb=[];l.forEach((o,i)=>{const b=bboxR(o[0]);bb.push(b);for(let x=Math.floor(b[0]/CEL);x<=Math.floor(b[2]/CEL);x++)for(let y=Math.floor(b[1]/CEL);y<=Math.floor(b[3]/CEL);y++)(idx[x+","+y]=idx[x+","+y]||[]).push(i);});return {idx,bb};}
+function candidatos(I,b){const s=new Set();for(let x=Math.floor(b[0]/CEL);x<=Math.floor(b[2]/CEL);x++)for(let y=Math.floor(b[1]/CEL);y<=Math.floor(b[3]/CEL);y++)for(const i of (I.idx[x+","+y]||[])){const c=I.bb[i];if(c[0]<=b[2]&&c[2]>=b[0]&&c[1]<=b[3]&&c[3]>=b[1])s.add(i);}return [...s];}
+const polyT=r=>r.length===1?turf.polygon([r[0]]):turf.multiPolygon(r.map(x=>[x]));
+function rect(a,b,w){const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1,nx=-dy/L*w/2,ny=dx/L*w/2;const p=[[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]];p.push(p[0]);return p.map(q=>toLL(q[0],q[1]));}
+const bboxP=pts=>bboxR([pts]);
+
+// =============================================================== estado
+let S={lineas:[],activa:0,centro:null},modo=null;   // modo: null | "agregar" | "area"
+let nuevo=null;                                      // proyecto en construcción
+function clonar(o){return JSON.parse(JSON.stringify(o));}
+function cargarReferencial(){const ref=D.anteproyecto;S.lineas=ref.lineas.map(l=>({nombre:l.nombre,est:l.estaciones.map(e=>({lon:e[0],lat:e[1],nombre:e[2]}))}));
+ S.activa=0;const c=D.meta.centro||[S.lineas[0].est[0].lon,S.lineas[0].est[0].lat];S.centro={lon:c[0],lat:c[1]};render();}
+function lienzoVacio(){S.lineas=[{nombre:"Línea 1",est:[]}];S.activa=0;if(!S.centro){const c=D.meta.centro||[LON0,LAT0];S.centro={lon:c[0],lat:c[1]};}render();}
+const anguloEn=(l,i)=>{if(i<=0||i>=l.est.length-1)return 0;const a=toXY(l.est[i-1].lon,l.est[i-1].lat),b=toXY(l.est[i].lon,l.est[i].lat),c=toXY(l.est[i+1].lon,l.est[i+1].lat);
+ let d=(Math.atan2(c[1]-b[1],c[0]-b[0])-Math.atan2(b[1]-a[1],b[0]-a[0]))*180/Math.PI;while(d>180)d-=360;while(d<-180)d+=360;return d;};
+const claseAng=a=>Math.abs(a)>10?"bad":Math.abs(a)>V("ang_lim")?"warn":"";
+const radioDe=e=>e.r||V("radio");
+
+// =============================================================== cálculo
+const cacheIso=new Map();
+function iso(e){const k=[e.lon.toFixed(6),e.lat.toFixed(6),P.tobler.v,P.v_cam.v].join();if(!cacheIso.has(k))cacheIso.set(k,dijkstra(toXY(e.lon,e.lat),40*60));return cacheIso.get(k);}
+function calcular(){
+ const R={est:[],tramos:[],mz:new Array(D.manzanas.length).fill(null)};
+ S.lineas.forEach((l,li)=>l.est.forEach((e,ei)=>R.est.push({li,ei,e,xy:toXY(e.lon,e.lat)})));
+ if(!R.est.length)return R;
+ const n=R.est.length,adj=R.est.map(()=>[]),id=(li,ei)=>R.est.findIndex(s=>s.li===li&&s.ei===ei);
+ S.lineas.forEach((l,li)=>{for(let i=0;i<l.est.length-1;i++){const a=id(li,i),b=id(li,i+1),Lm=dist(R.est[a].xy,R.est[b].xy);
+  const dz=cota(l.est[i+1].lon,l.est[i+1].lat)-cota(l.est[i].lon,l.est[i].lat),Li=Math.hypot(Lm,dz),t=Li/V("v_linea")+V("t_est");
+  R.tramos.push({li,i,a,b,L:Lm,Li,dz,t});adj[a].push([b,t,0]);adj[b].push([a,t,0]);}});
+ R.transb=[];for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)if(R.est[a].li!==R.est[b].li&&dist(R.est[a].xy,R.est[b].xy)<80){adj[a].push([b,V("t_transb"),1]);adj[b].push([a,V("t_transb"),1]);R.transb.push([a,b]);}
+ const tC=dijkstra(toXY(S.centro.lon,S.centro.lat),40*60);
+ R.est.forEach(s=>{const [nn,dd]=nodoCercano(s.xy);s.egreso=tC[nn]+dd/V("v_cam");if(!isFinite(s.egreso))s.egreso=dist(s.xy,toXY(S.centro.lon,S.centro.lat))*1.3/V("v_cam");});
+ let dest=0;R.est.forEach((s,i)=>{if(s.egreso<R.est[dest].egreso)dest=i;});R.dest=dest;
+ const tv=new Array(n).fill(Infinity),tb=new Array(n).fill(0),vis=new Array(n).fill(false);tv[dest]=0;
+ for(let k=0;k<n;k++){let u=-1;for(let i=0;i<n;i++)if(!vis[i]&&(u<0||tv[i]<tv[u]))u=i;if(u<0||tv[u]===Infinity)break;vis[u]=true;
+  for(const [v,t,esT] of adj[u]){const nt=tv[u]+t;if(nt<tv[v]){tv[v]=nt;tb[v]=tb[u]+(esT?t:0);}}}
+ const egr=R.est[dest].egreso;
+ R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr,pob:0,hog:0,accSum:0}));
+ const isos=R.est.map(s=>iso(s.e));
+ D.manzanas.forEach((m,mi)=>{let best=null;const mxy=toXY(m[0],m[1]);
+  R.est.forEach((s,si)=>{const r=radioDe(s.e);let acc=isos[si][m[6]]+m[7]/V("v_cam");
+   if(P.cob_modo.v==="radio"){const d=dist(mxy,s.xy);if(d>r)return;if(!isFinite(acc))acc=d*1.3/V("v_cam");}
+   else if(!(acc<=r/V("v_cam")))return;
+   if(!isFinite(s.viaje))return;const tot=acc+s.espera+s.viaje+s.transb+s.egr;if(!best||tot<best.tot)best={si,acc,tot};});
+  if(best){R.mz[mi]=best;const s=R.est[best.si],p=m[2]||0;s.pob+=p;s.hog+=m[3]||0;s.accSum+=best.acc*p;}});
+ return R;}
+
+function sobrevuelo(R){const O={fajas:[],huellas:[],ed:new Map(),lot:new Map()};
+ R.tramos.forEach(t=>O.fajas.push(rect(R.est[t.a].xy,R.est[t.b].xy,V("faja"))));
+ S.lineas.forEach(l=>l.est.forEach((e,i)=>{const p=toXY(e.lon,e.lat);let d=[1,0];if(l.est.length>1){const a=l.est[Math.max(0,i-1)],b=l.est[Math.min(l.est.length-1,i+1)];const A=toXY(a.lon,a.lat),B=toXY(b.lon,b.lat);d=[B[0]-A[0],B[1]-A[1]];}
+  const L=Math.hypot(...d)||1,u=[d[0]/L,d[1]/L],h=V("est_largo")/2;O.huellas.push(rect([p[0]-u[0]*h,p[1]-u[1]*h],[p[0]+u[0]*h,p[1]+u[1]*h],V("est_ancho")));}));
+ const ev=(pts,tipo)=>{const T=turf.polygon([pts]),b=bboxP(pts);
+  for(const i of candidatos(IE,b)){if(turf.booleanIntersects(polyT(D.edificaciones[i][0]),T)){const o=O.ed.get(i)||{};o[tipo]=true;O.ed.set(i,o);}}
+  for(const i of candidatos(IP,b)){const PT=polyT(D.predios[i][0]);if(turf.booleanIntersects(PT,T)){const o=O.lot.get(i)||{aFaja:0,aEst:0};o[tipo]=true;
+   try{const x=turf.intersect(PT,T);if(x){if(tipo==="faja")o.aFaja+=turf.area(x);else o.aEst+=turf.area(x);}}catch(e){}O.lot.set(i,o);}}};
+ O.fajas.forEach(p=>ev(p,"faja"));O.huellas.forEach(p=>ev(p,"est"));return O;}
+
+function valorizar(O){const vs=D.valores.por_tipologia,q=(t,c)=>vs[t]&&vs[t][c]?vs[t][c].p50:null;
+ const ufS=P.suelo.v==="bajo"?q("Sitio eriazo","uf_m2_terreno"):q("Casa","uf_m2_terreno");
+ const ufC=nh=>nh>2?q("Departamento","uf_m2_construido"):nh>0?q("Casa","uf_m2_construido"):(q("Comercio","uf_m2_construido")||q("Casa","uf_m2_construido"));
+ const edL=new Map();O.ed.forEach((o,i)=>{const p=D.edificaciones[i][1];if(p==null)return;if(!edL.has(p))edL.set(p,[]);edL.get(p).push([i,o]);});
+ function esc(conFaja){const r={uf:0,ufS:0,ufC:0,m2:0,viv:0,pers:0,ed:0,sinLote:0};const af=o=>o.est||(conFaja&&o.faja);
+  O.lot.forEach((o,pid)=>{if(!af(o))return;const p=D.predios[pid],nh=p[2],area=p[3],eds=(edL.get(pid)||[]).filter(([,x])=>af(x));
+   const aI=Math.min(area,o.aEst+(conFaja?o.aFaja:0));let s=aI;
+   if(eds.length&&nh>0&&nh<=2&&area<=2000)s=area;else if(eds.length&&nh>2)s=Math.min(area,Math.max(aI,eds.reduce((t,[i])=>t+(D.edificaciones[i][7]||0),0)));
+   r.m2+=s;r.ufS+=s*ufS;for(const [i] of eds)r.ufC+=D.edificaciones[i][3]*ufC(nh);});
+  O.ed.forEach((o,i)=>{if(!af(o))return;const e=D.edificaciones[i];r.ed++;if(e[2]>0){r.viv+=e[2];const m=D.manzanas[e[5]];r.pers+=e[2]*((m&&m[5])||0);}if(e[1]==null){r.sinLote++;r.ufC+=e[6]*ufC(1);}});
+  r.uf=r.ufS+r.ufC;return r;}
+ let terr=0;O.lot.forEach((o,pid)=>{if(o.faja&&D.predios[pid][2]>0)terr++;});
+ return {E1:esc(true),E2:esc(false),terr,ufS};}
+
+function inversion(R,VAL){
+ // estaciones físicas: las de distinta línea a < 80 m son una estación de transbordo
+ const fis=[];R.est.forEach((s,i)=>{const f=fis.find(f=>f.some(j=>dist(R.est[j].xy,s.xy)<80&&R.est[j].li!==s.li));if(f)f.push(i);else fis.push([i]);});
+ const c={em:0,torres:0,cables:0,cabinas:0,otros_em:0,montaje:0,arq:0,estr:0,elec:0,urb:0,recargo:0};
+ S.lineas.forEach((l,li)=>{const n=l.est.length;if(n<2)return;const L=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0);
+  const ang=l.est.map((_,i)=>anguloEn(l,i));
+  const emEst=[CU.motriz,...Array(n-2).fill(CU.intermedia),CU.retorno];
+  emEst.forEach((v,i)=>{c.em+=v;c.recargo+=v*(i>0&&i<n-1?recargoAng(ang[i]):0);});
+  c.otros_em+=CU.garaje+CU.herr_base+CU.herr_m*L;c.torres+=CU.torre_km*V("torres_km")*L/1000;c.cables+=(CU.cable_com_m+CU.cable_port_m)*L;c.cabinas+=CU.cab_m*L+CU.cab_est*n;
+  c.elec+=CU.elec_est_linea*n;});
+ c.montaje=CU.montaje*(c.em+c.recargo+c.otros_em+c.torres+c.cables+c.cabinas);
+ fis.forEach(f=>{const s=R.est[f[0]],l=S.lineas[s.li],extremo=f.every(j=>{const t=R.est[j];return t.ei===0||t.ei===S.lineas[t.li].est.length-1;});
+  let arq=f.length>1?CU.arq_transbordo:(extremo?CU.arq_extremo:CU.arq_intermedia);const a=f.length>1?0:anguloEn(l,s.ei);c.recargo+=arq*recargoAng(a)*(a?1:0);c.arq+=arq;c.estr+=CU.estructura_est;c.urb+=CU.urbanas_est;});
+ const cd=Object.values(c).reduce((s,v)=>s+v,0),gg=cd*CU.gg,iva=(cd+gg)*CU.iva;
+ return {c,cd,gg,iva,sinExp:cd+gg+iva,E1:cd+gg+iva+VAL.E1.uf,E2:cd+gg+iva+VAL.E2.uf,nFis:fis.length};}
+
+// =============================================================== mapa
+const map=L.map("map",{preferCanvas:true,zoomControl:true});
+const bases={mapa:L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap",className:"tesela-mapa"}),
+ sat:L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri World Imagery"})};
+const etiquetas=L.layerGroup([L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,opacity:.8}),
+ L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{maxZoom:19})]);
+let baseActual="mapa";
+const cv=L.canvas({padding:.3});
+const capArea=L.layerGroup(),capMz=L.layerGroup(),capEd=L.layerGroup(),capFaja=L.layerGroup(),capAfect=L.layerGroup(),capCob=L.layerGroup(),capLin=L.layerGroup(),capTor=L.layerGroup(),capNuevo=L.layerGroup().addTo(map);
+[capArea,capMz,capFaja,capAfect,capCob,capLin,capTor].forEach(c=>c.addTo(map));
+const CAPAS=[["Área de estudio",capArea],["Manzanas cubiertas",capMz],["Círculos de cobertura",capCob],["Faja y estaciones",capFaja],["Afectados",capAfect],["Torres del referencial",capTor],["Edificaciones (zoom ≥ 16)",capEd]];
+let verEd=true;
+const ctrlBase=L.control({position:"topright"});ctrlBase.onAdd=()=>{const d=L.DomUtil.create("div","leyenda");
+ d.innerHTML='<b>Fondo</b><label><input type="radio" name="bm" value="mapa" checked> Mapa</label> <label><input type="radio" name="bm" value="sat"> Satélite</label><details><summary style="cursor:pointer;font-weight:600;margin-top:4px">Capas</summary>'+
+  CAPAS.map(([n],i)=>`<label style="display:block"><input type="checkbox" data-i="${i}" checked> ${n}</label>`).join("")+'</details>';
+ L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);
+ d.querySelectorAll("input[name=bm]").forEach(i=>i.onchange=()=>{baseActual=i.value;aplicarBase();});
+ d.querySelectorAll("input[data-i]").forEach(i=>i.onchange=()=>{const [n,c]=CAPAS[+i.dataset.i];if(c===capEd){verEd=i.checked;ajustarEd();return;}if(i.checked)c.addTo(map);else map.removeLayer(c);});return d;};ctrlBase.addTo(map);
+function ajustarEd(){if(verEd&&map.getZoom()>=16)capEd.addTo(map);else map.removeLayer(capEd);}
+function aplicarBase(){Object.values(bases).forEach(b=>map.removeLayer(b));map.removeLayer(etiquetas);
+ if(baseActual==="sat"){bases.sat.addTo(map);etiquetas.addTo(map);}else bases.mapa.addTo(map);if(R)pintarMapa();}
+const leyenda=L.control({position:"bottomleft"});leyenda.onAdd=()=>{const d=L.DomUtil.create("div","leyenda");d.id="leyenda";return d;};leyenda.addTo(map);
+map.on("zoomend",ajustarEd);
+map.on("click",ev=>{if(modo==="area"){nuevo.area.push([ev.latlng.lng,ev.latlng.lat]);dibujarNuevo();return;}
+ if(modo!=="agregar")return;const l=S.lineas[S.activa];if(!l)return;l.est.push({lon:ev.latlng.lng,lat:ev.latlng.lat,nombre:`E${l.est.length+1}`});render();});
+function setModo(m,txt){modo=m;$("modo").style.display=m?"block":"none";$("modo").textContent=txt||"";map.getContainer().style.cursor=m?"crosshair":"";$("bAgregar").classList.toggle("on",m==="agregar");}
+
+function dibujarBaseProyecto(){capArea.clearLayers();capMz.clearLayers();capEd.clearLayers();capTor.clearLayers();
+ L.polygon(D.area.map(p=>[p[1],p[0]]),{color:css("--ink"),weight:1.5,dashArray:"6 4",fill:false,interactive:false}).addTo(capArea);
+ mzPoly=D.manzanas_geo.map((g,i)=>L.polygon(g.map(r=>r.map(p=>[p[1],p[0]])),{renderer:cv,weight:.5,color:css("--line-2"),fillOpacity:0}).bindTooltip(()=>tipMz(i),{sticky:true}).addTo(capMz));
+ D.edificaciones.forEach(e=>L.polygon(e[0].map(r=>r.map(p=>[p[1],p[0]])),{renderer:cv,color:css("--ink-lo"),weight:.4,fillOpacity:.12,interactive:false}).addTo(capEd));
+ (D.anteproyecto.torres||[]).forEach(t=>L.circleMarker([t[3],t[2]],{radius:3,color:css("--ink"),weight:1,fillColor:css("--surface"),fillOpacity:1}).bindTooltip(`Torre ${t[0]} ${t[1]} · terreno ${t[5]} m · cable ${t[6]} m (P178)`).addTo(capTor));
+ const b=L.latLngBounds(D.area.map(p=>[p[1],p[0]]));map.fitBounds(b,{padding:[20,20]});}
+let mzPoly=[];
+function tipMz(i){const m=D.manzanas[i],a=R&&R.mz[i];return `Manzana · ${fmt(m[2])} personas · ${fmt(m[3])} hogares`+(a?`<br>Estación ${R.est[a.si].e.nombre} · caminata ${fmt(a.acc/60,1)} min · total ${fmt(a.tot/60,1)} min`:"<br>Fuera de cobertura");}
+
+function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();const C=COLS();
+ S.lineas.forEach((l,li)=>{const c=C[li%C.length],act=li===S.activa;
+  if(l.est.length>1){const pl=L.polyline(l.est.map(e=>[e.lat,e.lon]),{color:c,weight:act?6:4,opacity:.95}).addTo(capLin);
+   pl.on("click",ev=>{L.DomEvent.stopPropagation(ev);S.activa=li;const p=ev.latlng,xy=toXY(p.lng,p.lat);let best=0,bd=1e18;  // inserta en el tramo más cercano
+    for(let i=0;i<l.est.length-1;i++){const a=toXY(l.est[i].lon,l.est[i].lat),b=toXY(l.est[i+1].lon,l.est[i+1].lat),dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((xy[0]-a[0])*dx+(xy[1]-a[1])*dy)/(dx*dx+dy*dy||1)));const d=dist(xy,[a[0]+t*dx,a[1]+t*dy]);if(d<bd){bd=d;best=i;}}
+    l.est.splice(best+1,0,{lon:p.lng,lat:p.lat,nombre:`E${best+1}·${best+2}`});render();});
+   pl.bindTooltip("Clic para insertar una estación aquí",{sticky:true});}
+  l.est.forEach((e,ei)=>{
+   const m=L.marker([e.lat,e.lon],{draggable:true,keyboard:false,icon:L.divIcon({className:"",html:`<div style="width:16px;height:16px;border-radius:50%;background:${c};border:3px solid ${css("--surface")};box-shadow:0 0 0 1.5px ${c}"></div>`,iconSize:[16,16],iconAnchor:[8,8]})}).addTo(capLin);
+   m.bindTooltip(e.nombre,{permanent:true,direction:"right",className:"etq",offset:[10,0]});
+   m.on("drag",ev=>{const p=ev.target.getLatLng();e.lat=p.lat;e.lon=p.lng;});m.on("dragend",()=>render());
+   m.on("click",()=>{S.activa=li;render();});
+   const a=anguloEn(l,ei);if(ei>0&&ei<l.est.length-1){const k=claseAng(a);
+    L.marker([e.lat,e.lon],{interactive:false,icon:L.divIcon({className:"",html:`<span class="angtag ${k}">∠ ${fmt(Math.abs(a),0)}°</span>`,iconSize:[52,18],iconAnchor:[26,-12]})}).addTo(capLin);}
+   // círculo de cobertura con manilla para cambiar el radio
+   const r=radioDe(e);const ci=L.circle([e.lat,e.lon],{radius:r,color:c,weight:act?1.5:1,opacity:.7,fillOpacity:.04,dashArray:"4 4",interactive:false}).addTo(capCob);
+   if(act){const h=toLL(...(()=>{const p=toXY(e.lon,e.lat);return [p[0]+r,p[1]];})());
+    const hm=L.marker([h[1],h[0]],{draggable:true,icon:L.divIcon({className:"",html:`<div title="Arrastra para cambiar el radio" style="width:12px;height:12px;border-radius:3px;background:${css("--surface")};border:2px solid ${c}"></div>`,iconSize:[12,12],iconAnchor:[6,6]})}).addTo(capCob);
+    hm.bindTooltip(`Radio ${fmt(r)} m`,{direction:"top"});
+    hm.on("drag",ev=>{const p=ev.target.getLatLng();const rr=dist(toXY(p.lng,p.lat),toXY(e.lon,e.lat));ci.setRadius(rr);hm.setTooltipContent(`Radio ${fmt(rr)} m`);});
+    hm.on("dragend",ev=>{const p=ev.target.getLatLng();e.r=Math.round(dist(toXY(p.lng,p.lat),toXY(e.lon,e.lat))/10)*10;render();});}
+  });});
+ if(S.centro){const m=L.marker([S.centro.lat,S.centro.lon],{draggable:true,icon:L.divIcon({className:"",html:`<div style="font-size:24px;line-height:24px;color:${css("--red")};text-shadow:0 0 3px ${css("--surface")}">★</div>`,iconSize:[24,24],iconAnchor:[12,12]})}).addTo(capLin);
+  m.bindTooltip("Destino: centro (arrastrable)");m.on("dragend",ev=>{const p=ev.target.getLatLng();S.centro={lat:p.lat,lon:p.lng};render();});}}
+
+function pintarMapa(){const C=COLS(),sat=baseActual==="sat";
+ mzPoly.forEach((p,i)=>{const a=R.mz[i];if(!a){p.setStyle({fillOpacity:0,color:css("--line-2"),weight:.4});return;}const c=C[R.est[a.si].li%C.length];
+  p.setStyle({fillColor:c,fillOpacity:(sat?.15:.12)+(sat?.4:.45)*(1-a.acc/(radioDe(R.est[a.si].e)/V("v_cam"))),color:c,weight:.6});});
+ capFaja.clearLayers();capAfect.clearLayers();
+ O.fajas.forEach(f=>L.polygon(f.map(p=>[p[1],p[0]]),{color:css("--faja"),weight:1,fillOpacity:.12,dashArray:"3 3",interactive:false}).addTo(capFaja));
+ O.huellas.forEach(f=>L.polygon(f.map(p=>[p[1],p[0]]),{color:css("--ink"),weight:1,fillColor:css("--ink"),fillOpacity:.22,interactive:false}).addTo(capFaja));
+ O.ed.forEach((o,i)=>{const e=D.edificaciones[i],hab=e[2]>0;const pg=L.polygon(e[0].map(r=>r.map(p=>[p[1],p[0]])),{color:hab?css("--viv"):css("--noviv"),weight:1,fillOpacity:.6,fillColor:hab?css("--viv"):css("--noviv"),interactive:!PUB()}).addTo(capAfect);
+  if(!PUB())pg.bindTooltip(`${hab?"Vivienda":"Edificación no habitacional"} · huella ${fmt(e[6])} m²`+(e[4]?` · ${e[4]} pisos (SII)`:"")+(hab?`<br>Viviendas estimadas ${fmt(e[2],1)}`:"")+(o.est?"<br>Bajo estación":""));});
+ $("leyenda").innerHTML=`<details open><summary style="cursor:pointer;font-weight:600">Leyenda</summary><b>Cobertura</b>${S.lineas.map((l,li)=>`<i style="background:${C[li%C.length]};opacity:.6"></i>${l.nombre}`).join("<br>")}
+  <br><span class="mut">más intenso = menos caminata</span><br><b style="margin-top:4px">Sobrevuelo</b><i style="border:1.5px dashed ${css("--faja")};background:transparent"></i>Faja (${V("faja")} m)<br>
+  <i style="background:${css("--ink")};opacity:.3"></i>Huella de estación<br><i style="background:${css("--viv")}"></i>Vivienda afectada<br><i style="background:${css("--noviv")}"></i>Otra edificación<br>
+  <b style="margin-top:4px">Ángulo en estación</b><span class="angtag">∠ ≤ ${V("ang_lim")}°</span> <span class="angtag warn">&gt; ${V("ang_lim")}°</span> <span class="angtag bad">&gt; 10°</span></details>`;}
+
+// =============================================================== paneles
+function armarParams(){for(const g of ["pCob","pOp","pCost"])$(g).innerHTML="";
+ for(const [k,p] of Object.entries(P)){const lab=document.createElement("label");lab.textContent=p.l;lab.title=p.n||"";lab.htmlFor="p_"+k;$(p.g).appendChild(lab);
+  let i;if(p.t==="sel"){i=document.createElement("select");i.innerHTML=p.o.map(([v,t])=>`<option value="${v}">${t}</option>`).join("");}else{i=document.createElement("input");i.type="number";i.step="any";}
+  i.id="p_"+k;i.value=p.v;i.onchange=()=>{p.v=i.value;cacheIso.clear();render();};$(p.g).appendChild(i);}}
+function panelLineas(){const C=COLS();const ll=$("listaLineas");ll.innerHTML="";
+ S.lineas.forEach((l,li)=>{const d=document.createElement("div");d.className="it"+(li===S.activa?" on":"");
+  d.innerHTML=`<span class="sw" style="background:${C[li%C.length]}"></span><input type="text" value="${l.nombre}" style="flex:1;border:none;background:transparent;padding:2px" aria-label="Nombre de la línea"><span class="mut num">${l.est.length}</span><button class="x" title="Eliminar línea" aria-label="Eliminar línea">✕</button>`;
+  d.onclick=()=>{if(S.activa!==li){S.activa=li;render();}};const inp=d.querySelector("input");inp.onchange=()=>{l.nombre=inp.value;render();};inp.onclick=ev=>ev.stopPropagation();
+  d.querySelector("button").onclick=ev=>{ev.stopPropagation();if(confirm(`¿Eliminar ${l.nombre}?`)){S.lineas.splice(li,1);S.activa=0;render();}};ll.appendChild(d);});
+ const l=S.lineas[S.activa],le=$("listaEst");if(!l){le.innerHTML="";return;}
+ le.innerHTML=`<div class="est mut" style="font-size:.68rem;text-transform:uppercase;letter-spacing:.04em"><span></span><span>Estación</span><span>Radio m</span><span style="text-align:right">Ángulo</span><span></span></div>`;
+ l.est.forEach((e,ei)=>{const a=anguloEn(l,ei),k=claseAng(a),d=document.createElement("div");d.className="est";
+  d.innerHTML=`<span class="num mut">${ei+1}</span><input type="text" value="${e.nombre}" aria-label="Nombre"><input type="number" value="${radioDe(e)}" step="10" aria-label="Radio"><span class="ang ${k}">${ei>0&&ei<l.est.length-1?fmt(Math.abs(a),0)+"°":"—"}</span><button class="x" title="Eliminar estación" aria-label="Eliminar estación">✕</button>`;
+  const [n,r]=d.querySelectorAll("input");n.onchange=()=>{e.nombre=n.value;render();};r.onchange=()=>{e.r=+r.value;render();};
+  d.querySelector("button").onclick=()=>{l.est.splice(ei,1);render();};le.appendChild(d);});}
+function panelTrazados(){const t=trazadosGuardados(),cont=$("listaTraz");cont.innerHTML=Object.keys(t).length?"":`<p class="nota">Aún no hay trazados guardados en este proyecto.</p>`;
+ Object.entries(t).sort((a,b)=>b[1].fecha.localeCompare(a[1].fecha)).forEach(([nom,v])=>{const d=document.createElement("div");d.className="it";
+  d.innerHTML=`<span style="flex:1">${nom}<br><span class="mut" style="font-size:.7rem">${v.fecha.slice(0,16).replace("T"," ")} · ${v.lineas.reduce((s,l)=>s+l.est.length,0)} est.</span></span><button class="b">Cargar</button><button class="x" title="Borrar" aria-label="Borrar trazado">✕</button>`;
+  d.querySelector(".b").onclick=()=>{S=clonar({lineas:v.lineas,centro:v.centro,activa:0});if(v.params)for(const k in v.params)if(P[k])P[k].v=v.params[k];armarParams();cacheIso.clear();$("nomTraz").value=nom;render();};
+  d.querySelector(".x").onclick=()=>{if(confirm(`¿Borrar el trazado «${nom}»?`)){delete t[nom];guardarTrazados(t);panelTrazados();}};cont.appendChild(d);});}
+const claveT=()=>`telef_trazados_${PID}`;
+function trazadosGuardados(){try{return JSON.parse(localStorage.getItem(claveT())||"{}");}catch(e){return {};}}
+function guardarTrazados(t){try{localStorage.setItem(claveT(),JSON.stringify(t));}catch(e){alert("No se pudo guardar en este navegador.");}}
+
+function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog=R.est.reduce((s,e)=>s+e.hog,0),L=R.tramos.reduce((s,t)=>s+t.L,0);
+ const pobArea=D.manzanas.reduce((s,m)=>s+(m[8]?m[2]||0:0),0),pobCub=D.manzanas.reduce((s,m,i)=>s+(m[8]&&R.mz[i]?m[2]||0:0),0);
+ const ang=[];S.lineas.forEach(l=>l.est.forEach((e,i)=>{const a=Math.abs(anguloEn(l,i));if(i>0&&i<l.est.length-1&&a>V("ang_lim"))ang.push(`${e.nombre} ${fmt(a,0)}°`);}));
+ const mm=x=>fmt(x*V("uf_clp")/1e9,1);
+ $("kpis").innerHTML=`<div class="kpi full"><div class="v">${fmt(pob)}</div><div class="l">personas cubiertas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div></div>
+  <div class="kpi"><div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>l.est.length>1).length} línea(s) · ${R.est.length} estaciones</div></div>
+  <div class="kpi"><div class="v ${ang.length?"warn":""}">${ang.length}</div><div class="l">quiebres &gt; ${V("ang_lim")}°${ang.length?": "+ang.join(", "):""}</div></div>
+  <div class="kpi"><div class="v">${fmt(VAL.E1.viv)}</div><div class="l">viviendas bajo la faja · ≈ ${fmt(VAL.E1.pers)} personas</div></div>
+  <div class="kpi"><div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>
+  <div class="kpi full"><div class="v">${fmt(INV.E2/1e3,0)} – ${fmt(INV.E1/1e3,0)} mil UF</div><div class="l">inversión total estimada E2 – E1 (≈ MM$ ${mm(INV.E2)} – ${mm(INV.E1)} mil millones)</div></div>`;
+ let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th></tr>`;
+ R.est.forEach((s,i)=>{const acc=s.pob?s.accSum/s.pob:null,tot=acc==null?null:acc+s.espera+s.viaje+s.transb+s.egr;
+  h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${i===R.dest?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
+ $("tTiempos").innerHTML=h+"</table>";
+ h=`<table><tr><th>Tramo</th><th>Planta m</th><th>Inclin. m</th><th>Desnivel</th><th>Min</th></tr>`;
+ R.tramos.forEach(t=>{const l=S.lineas[t.li];h+=`<tr><td>${l.est[t.i].nombre} → ${l.est[t.i+1].nombre}</td><td>${fmt(t.L)}</td><td>${fmt(t.Li)}</td><td>${fmt(t.dz)} m</td><td>${fmt(t.t/60,1)}</td></tr>`;});
+ S.lineas.forEach((l,li)=>{if(l.est.length<2)return;const tt=R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.t,0);h+=`<tr class="tot"><td>${l.nombre}</td><td>${fmt(R.tramos.filter(t=>t.li===li).reduce((s,t)=>s+t.L,0))}</td><td></td><td></td><td>${fmt(tt/60,1)}</td></tr>`;});
+ $("tTramos").innerHTML=h+"</table>";
+ const E1=VAL.E1,E2=VAL.E2,f=(t,a,b,cl="")=>`<tr class="${cl}"><td>${t}</td><td>${a}</td><td>${b}</td></tr>`;
+ $("tExp").innerHTML=`<table><tr><th></th><th>E1</th><th>E2</th></tr>`+f("Edificios afectados",fmt(E1.ed),fmt(E2.ed))+f("Viviendas",fmt(E1.viv),fmt(E2.viv))+f("Personas (≈)",fmt(E1.pers),fmt(E2.pers))+
+  f("Suelo (m²)",fmt(E1.m2),fmt(E2.m2))+f("Suelo (UF)",fmt(E1.ufS),fmt(E2.ufS))+f("Construcción (UF)",fmt(E1.ufC),fmt(E2.ufC))+f("Total (UF)",fmt(E1.uf),fmt(E2.uf),"tot")+`</table>
+  <div class="nota">Suelo ${fmt(VAL.ufS,2)} UF/m² (${P.suelo.v==="bajo"?"p50 sitios eriazos":"p50 suelo en casas"}). Costo del sobrevuelo (E1 − E2): <b class="num">${fmt(E1.uf-E2.uf)} UF</b>.</div>`;
+ const c=INV.c,g=(t,v,cl="")=>`<tr class="${cl}"><td>${t}</td><td>${fmt(v)}</td><td>${fmt(100*v/INV.cd,1)}</td></tr>`;
+ $("tInv").innerHTML=`<table><tr><th>Partida</th><th>UF</th><th>%</th></tr>`+g("Estaciones electromecánicas",c.em)+g("Recargo por ángulos",c.recargo)+g("Torres",c.torres)+g("Cables",c.cables)+g("Cabinas",c.cabinas)+
+  g("Garaje, repuestos y rescate",c.otros_em)+g("Montaje",c.montaje)+g("Arquitectura de estaciones",c.arq)+g("Estructuras",c.estr)+g("Instalaciones eléctricas",c.elec)+g("Obras urbanas complementarias",c.urb)+
+  g("Costo directo",INV.cd,"tot")+`<tr><td>GG y utilidades (35 %)</td><td>${fmt(INV.gg)}</td><td></td></tr><tr><td>IVA (19 %)</td><td>${fmt(INV.iva)}</td><td></td></tr>
+  <tr class="tot"><td>Total sin expropiación</td><td>${fmt(INV.sinExp)}</td><td></td></tr><tr><td>+ expropiación E2</td><td>${fmt(INV.E2)}</td><td></td></tr><tr><td>+ expropiación E1</td><td>${fmt(INV.E1)}</td><td></td></tr></table>
+  <div class="nota">${INV.nFis} estaciones físicas. Referencia: anteproyecto P178 completo = 2.127.475 UF de costo directo y 3.548.151 UF de total privado con expropiaciones (P246 Cuadro 1.2-11).</div>`;
+ $("fuentes").textContent="Fuentes: "+D.meta.fuentes+" · datos generados "+D.meta.generado.slice(0,10)+(D.meta.comunas_sin_catastro_sii&&D.meta.comunas_sin_catastro_sii.length?" · ⚠ sin catastro SII: "+D.meta.comunas_sin_catastro_sii.join(", "):"");}
+
+// =============================================================== corte
+function perfil(){const svg=$("svgPerfil"),l=S.lineas[S.activa];svg.innerHTML="";
+ if(!l||l.est.length<2){$("perfilTit").textContent="Corte topográfico · la línea activa necesita al menos dos estaciones";return;}
+ const pts=[],estX=[];let acum=0;
+ for(let i=0;i<l.est.length-1;i++){const a=toXY(l.est[i].lon,l.est[i].lat),b=toXY(l.est[i+1].lon,l.est[i+1].lat),Lm=dist(a,b),n=Math.max(1,Math.ceil(Lm/10));estX.push([acum,l.est[i]]);
+  for(let k=0;k<n;k++){const f=k/n,p=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f],ll=toLL(...p);pts.push([acum+Lm*f,cota(ll[0],ll[1]),p]);}acum+=Lm;}
+ const u=l.est[l.est.length-1];estX.push([acum,u]);pts.push([acum,cota(u.lon,u.lat),toXY(u.lon,u.lat)]);
+ const zc=estX.map(([x,e])=>[x,cota(e.lon,e.lat)+V("h_est")]);
+ const cable=x=>{for(let i=0;i<zc.length-1;i++)if(x<=zc[i+1][0]){const f=(x-zc[i][0])/((zc[i+1][0]-zc[i][0])||1);return zc[i][1]+(zc[i+1][1]-zc[i][1])*f;}return zc[zc.length-1][1];};
+ const edf=[];O.ed.forEach((o,i)=>{if(!o.faja)return;const e=D.edificaciones[i],c=toXY(e[0][0][0][0],e[0][0][0][1]);let best=null;for(const p of pts){const d=dist(p[2],c);if(!best||d<best.d)best={d,x:p[0],z:p[1]};}
+  if(best&&best.d<40)edf.push([best.x,best.z,(e[4]||Math.max(1,Math.round((e[3]||0)/(e[6]||1))))*2.7,e[2]>0]);});
+ const zmin=Math.min(...pts.map(p=>p[1]))-5,zmax=Math.max(...pts.map(p=>p[1]),...zc.map(c=>c[1]))+15;
+ const W=svg.clientWidth||800,H=svg.clientHeight||180,ml=40,mr=10,mt=16,mb=18,X=x=>ml+(W-ml-mr)*x/acum,Y=z=>mt+(H-mt-mb)*(1-(z-zmin)/(zmax-zmin));
+ svg.setAttribute("viewBox",`0 0 ${W} ${H}`);let s="";const ink=css("--ink"),lo=css("--ink-lo"),ln=css("--line");
+ const paso=zmax-zmin>150?50:25;for(let z=Math.ceil(zmin/paso)*paso;z<=zmax;z+=paso)s+=`<line x1="${ml}" x2="${W-mr}" y1="${Y(z)}" y2="${Y(z)}" stroke="${ln}"/><text x="${ml-4}" y="${Y(z)+3}" font-size="10" text-anchor="end" fill="${lo}" font-family="IBM Plex Mono">${z}</text>`;
+ const px=acum>3000?500:250;for(let x=0;x<=acum;x+=px)s+=`<text x="${X(x)}" y="${H-4}" font-size="10" text-anchor="middle" fill="${lo}" font-family="IBM Plex Mono">${x} m</text>`;
+ s+=`<path d="M${X(0)},${Y(zmin)} ${pts.map(p=>`L${X(p[0])},${Y(p[1])}`).join(" ")} L${X(acum)},${Y(zmin)} Z" fill="${css("--terreno")}" fill-opacity=".25" stroke="${css("--terreno")}" stroke-width="1.2"/>`;
+ edf.forEach(([x,z,h,hab])=>s+=`<rect x="${X(x)-2}" y="${Y(z+h)}" width="4" height="${Math.max(1,Y(z)-Y(z+h))}" fill="${hab?css("--viv"):css("--noviv")}"/>`);
+ let malos=0;pts.forEach(p=>{if(cable(p[0])-p[1]<V("galibo")){malos++;s+=`<line x1="${X(p[0])}" x2="${X(p[0])}" y1="${Y(p[1])}" y2="${Y(cable(p[0]))}" stroke="${css("--noviv")}" stroke-width="2" opacity=".55"/>`;}});
+ s+=`<polyline points="${zc.map(c=>`${X(c[0])},${Y(c[1])}`).join(" ")}" fill="none" stroke="${COLS()[S.activa%5]}" stroke-width="2.2"/>`;
+ const tr=l.nombre.match(/(T\d)$/);if(tr&&D.anteproyecto.torres){const L0=toXY(l.est[0].lon,l.est[0].lat);D.anteproyecto.torres.filter(t=>t[0]===tr[1]).forEach(t=>{const x=dist(toXY(t[2],t[3]),L0);s+=`<line x1="${X(x)}" x2="${X(x)}" y1="${Y(t[5])}" y2="${Y(t[6])}" stroke="${ink}"/><circle cx="${X(x)}" cy="${Y(t[6])}" r="2.5" fill="${ink}"/>`;});}
+ estX.forEach(([x,e],i)=>{const a=anguloEn(l,i);s+=`<line x1="${X(x)}" x2="${X(x)}" y1="${mt}" y2="${H-mb}" stroke="${lo}" stroke-dasharray="2 3"/><text x="${X(x)+3}" y="${mt-4}" font-size="10" fill="${ink}" font-weight="600">${e.nombre}${i>0&&i<l.est.length-1?` ∠${fmt(Math.abs(a),0)}°`:""}</text>`;});
+ svg.innerHTML=s;
+ $("perfilTit").innerHTML=`Corte · ${l.nombre} · ${fmt(acum)} m en planta · terreno Copernicus GLO-30 · cable como cuerda recta a ${V("h_est")} m sobre cada estación · <span class="warn">naranjo: gálibo &lt; ${V("galibo")} m (${fmt(malos*10)} m requieren torres)</span>`+(tr&&D.anteproyecto.torres?" · puntos: torres y cota de cable P178":"");}
+
+// =============================================================== ciclo
+let R=null,O=null,VAL=null,INV=null,timer=null;const PUB=()=>!!(D&&D.meta.publico);
+function render(){clearTimeout(timer);timer=setTimeout(()=>{if(!D)return;dibujarLineas();panelLineas();R=calcular();O=sobrevuelo(R);VAL=valorizar(O);INV=inversion(R,VAL);pintarMapa();panelResultados();perfil();
+ try{localStorage.setItem(`telef_actual_${PID}`,JSON.stringify(S));}catch(e){}},90);}
+
+// =============================================================== proyectos
+async function cargarIndice(){try{INDICE=await (await fetch("proyectos/index.json?v="+VERSION)).json();}catch(e){$("projbar").insertAdjacentHTML("beforeend",`<span class="nota">No se pudo leer proyectos/index.json — abre la herramienta desde un servidor (GitHub Pages o el servidor local), no como archivo.</span>`);return;}
+ const pb=$("projbar");INDICE.proyectos.forEach(p=>{const b=document.createElement("button");b.textContent=p.nombre;b.dataset.id=p.id;if(!p.listo){b.disabled=true;b.title="El motor aún no procesa este proyecto";}b.onclick=()=>abrirProyecto(p.id);pb.appendChild(b);});
+ const nb=document.createElement("button");nb.className="nuevo";nb.textContent="+ Nuevo proyecto";nb.onclick=()=>{$("modal").style.display="flex";};pb.appendChild(nb);
+ const q=new URLSearchParams(location.search).get("p"),pid=(INDICE.proyectos.find(p=>p.id===q&&p.listo)||INDICE.proyectos.find(p=>p.listo)||{}).id;if(pid)abrirProyecto(pid);}
+async function abrirProyecto(pid){$("tituloRes").textContent="Cargando…";
+ try{D=await (await fetch(`proyectos/${pid}.json?v=${VERSION}`)).json();}catch(e){$("tituloRes").textContent="No se pudo cargar el proyecto";return;}
+ PID=pid;document.querySelectorAll(".projbar button[data-id]").forEach(b=>b.classList.toggle("on",b.dataset.id===pid));
+ history.replaceState(null,"","?p="+pid);document.title=`${D.meta.nombre} · Trazados de teleférico`;
+ $("badgeTxt").textContent=PUB()?"Versión pública · agregada":"Versión interna · datos prediales";
+ $("tituloRes").textContent=D.meta.nombre;cacheIso.clear();prepararDatos();dibujarBaseProyecto();
+ let ok=false;try{const j=JSON.parse(localStorage.getItem(`telef_actual_${pid}`)||"null");if(j&&j.lineas&&j.lineas.length){S=j;ok=true;}}catch(e){}
+ panelTrazados();if(ok)render();else cargarReferencial();}
+// nuevo proyecto
+function dibujarNuevo(){capNuevo.clearLayers();if(!nuevo)return;if(nuevo.area.length)L.polygon(nuevo.area.map(p=>[p[1],p[0]]),{color:css("--accent"),weight:2,dashArray:"6 4",fillOpacity:.06}).addTo(capNuevo);}
+$("npCancelar").onclick=()=>{$("modal").style.display="none";};
+$("npEmpezar").onclick=()=>{const nom=$("npNombre").value.trim();if(!nom){alert("Pon un nombre al proyecto.");return;}
+ nuevo={nombre:nom,id:nom.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""),area:[]};$("modal").style.display="none";
+ setModo("area","Nuevo proyecto: clic en cada vértice del área · «Cerrar área» en el panel izquierdo");
+ const card=document.createElement("div");card.className="card";card.id="cardNuevo";card.innerHTML=`<p class="eyebrow">Nuevo proyecto</p><h3>${nom}</h3><p class="lead">1) Dibuja el área. 2) Dibuja el trazado referencial con «+ Estaciones» sobre el lienzo vacío. 3) Genera la solicitud para el motor.</p>
+  <div class="row"><button class="b" id="npCerrar">Cerrar área</button><button class="b" id="npBorrar">Borrar área</button></div><div class="row"><button class="b pri" id="npSolicitud">Generar solicitud</button><button class="b" id="npSalir">Salir</button></div>`;
+ document.querySelector(".col.izq").prepend(card);
+ $("npCerrar").onclick=()=>{if(nuevo.area.length<3){alert("El área necesita al menos 3 vértices.");return;}setModo(null);S.lineas=[{nombre:"Referencial 1",est:[]}];S.activa=0;render();setModo("agregar","Trazado referencial: clic para agregar estaciones");};
+ $("npBorrar").onclick=()=>{nuevo.area=[];dibujarNuevo();setModo("area","Nuevo proyecto: clic en cada vértice del área");};
+ $("npSalir").onclick=()=>{nuevo=null;capNuevo.clearLayers();card.remove();setModo(null);};
+ $("npSolicitud").onclick=()=>{if(nuevo.area.length<3){alert("Primero dibuja y cierra el área.");return;}const ring=[...nuevo.area,nuevo.area[0]];
+  const sol={id:nuevo.id,nombre:nuevo.nombre,area:{type:"Polygon",coordinates:[ring]},referencial:{lineas:S.lineas.filter(l=>l.est.length>1).map(l=>({nombre:l.nombre,estaciones:l.est.map(e=>[+e.lon.toFixed(6),+e.lat.toFixed(6),e.nombre])}))},
+   centro:S.centro?[S.centro.lon,S.centro.lat]:null,solicitado:new Date().toISOString()};
+  const b=new Blob([JSON.stringify(sol,null,1)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`solicitud_${nuevo.id}.json`;a.click();
+  alert(`Solicitud descargada: solicitud_${nuevo.id}.json\n\nDéjala en la carpeta solicitudes/ del proyecto y corre:\npython -X utf8 scripts/motor_proyecto.py --solicitudes`);};};
+
+// =============================================================== controles
+$("bRef").onclick=()=>cargarReferencial();$("bVacio").onclick=()=>lienzoVacio();
+$("bNuevaLinea").onclick=()=>{S.lineas.push({nombre:`Línea ${S.lineas.length+1}`,est:[]});S.activa=S.lineas.length-1;setModo("agregar","Clic en el mapa para agregar estaciones · clic de nuevo en «+ Estaciones» para terminar");render();};
+$("bAgregar").onclick=()=>{if(modo==="agregar")setModo(null);else setModo("agregar","Clic en el mapa para agregar estaciones · clic de nuevo en «+ Estaciones» para terminar");};
+$("bRadioTodas").onclick=()=>{S.lineas.forEach(l=>l.est.forEach(e=>delete e.r));render();};
+$("bGuardar").onclick=()=>{const nom=$("nomTraz").value.trim();if(!nom){alert("Escribe un nombre para el trazado.");return;}const t=trazadosGuardados();
+ if(t[nom]&&!confirm(`Ya existe «${nom}». ¿Reemplazarlo?`))return;t[nom]={...clonar(S),params:Object.fromEntries(Object.entries(P).map(([k,p])=>[k,p.v])),fecha:new Date().toISOString()};guardarTrazados(t);panelTrazados();};
+$("bExp").onclick=()=>{const nom=$("nomTraz").value.trim()||"trazado";const b=new Blob([JSON.stringify({proyecto:PID,nombre:nom,...S,params:Object.fromEntries(Object.entries(P).map(([k,p])=>[k,p.v]))},null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`${PID}_${nom}.json`;a.click();};
+$("bImp").onclick=()=>$("fImp").click();
+$("fImp").onchange=ev=>{const f=ev.target.files[0];if(!f)return;f.text().then(t=>{const j=JSON.parse(t);S={lineas:j.lineas,centro:j.centro,activa:0};if(j.params)for(const k in j.params)if(P[k])P[k].v=j.params[k];if(j.nombre)$("nomTraz").value=j.nombre;armarParams();cacheIso.clear();render();});};
+function setTheme(dark){document.documentElement.setAttribute("data-theme",dark?"dark":"light");try{localStorage.setItem("theme",dark?"dark":"light");}catch(e){}$("themeBtn").textContent=dark?"☀":"☾";aplicarBase();if(D){dibujarBaseProyecto();render();}}
+$("themeBtn").onclick=()=>setTheme(document.documentElement.getAttribute("data-theme")!=="dark");
+window.addEventListener("resize",()=>{if(R)perfil();});
+try{if(localStorage.getItem("theme")==="dark"){document.documentElement.setAttribute("data-theme","dark");$("themeBtn").textContent="☀";}}catch(e){}
+armarParams();aplicarBase();map.setView([-36.71,-73.13],14);cargarIndice();
+window.__estado=()=>({S,R,O,VAL,INV,PID});
+</script>
+</body>
+</html>

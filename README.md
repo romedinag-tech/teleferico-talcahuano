@@ -1,4 +1,4 @@
-# Teleférico de Talcahuano — herramienta de trazados
+# Trazados de teleférico — herramienta multi-proyecto
 
 **Abrir la herramienta:** https://romedinag-tech.github.io/teleferico-talcahuano/
 
@@ -13,7 +13,13 @@ navegador calcula:
 - costo de expropiación en dos escenarios: **E1**, que expropia la faja, y **E2**, con la norma
   complementada para permitir el sobrevuelo.
 
-Trae precargado el anteproyecto SECTRA P178 (2025) con el eje oficial del MTT.
+Cada proyecto tiene su área de estudio y su trazado referencial. El primero es el **Teleférico de
+Talcahuano**, con el anteproyecto SECTRA P178 (2025) y el eje oficial del MTT. Los proyectos nuevos se
+definen en la página («+ Nuevo proyecto»), que genera una solicitud para el motor
+(`scripts/motor_proyecto.py --solicitudes`), y el motor incorpora los datos.
+
+La inversión se estima con los costos unitarios del presupuesto del anteproyecto P178. Aplicada al
+anteproyecto mismo, reproduce su costo directo con una diferencia de +0,6 %.
 
 **Versión pública.** Los resultados se muestran agregados por trazado. No incluye atributos del
 catastro SII por lote ni por edificio, y los valores de suelo y construcción son medianas de

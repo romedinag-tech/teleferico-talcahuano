@@ -1,0 +1,19 @@
+{
+ "proyectos": [
+  {
+   "id": "talcahuano",
+   "nombre": "Teleférico de Talcahuano",
+   "listo": true,
+   "bbox": [
+    -73.16261,
+    -36.72656,
+    -73.10819,
+    -36.69466
+   ],
+   "centro": [
+    -73.114501,
+    -36.710673
+   ]
+  }
+ ]
+}
