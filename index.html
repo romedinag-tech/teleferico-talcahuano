@@ -73,7 +73,7 @@ input[type=number]{font-family:var(--font-data)}
 .est{display:grid;grid-template-columns:18px 1fr 64px 46px 22px;gap:4px;align-items:center;padding:3px 0;border-bottom:1px dashed var(--line)}
 .est input{padding:3px 5px;font-size:.78rem}
 .ang{font-family:var(--font-data);font-size:.72rem;text-align:right}
-.warn{color:var(--warn);font-weight:600}.bad{color:var(--red);font-weight:600}.mut{color:var(--ink-lo)}
+.warn{color:var(--warn);font-weight:600}.okv{color:var(--green);font-weight:600}.bad{color:var(--red);font-weight:600}.mut{color:var(--ink-lo)}
 /* ---- resultados ---- */
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px}
@@ -174,9 +174,9 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
     <p class="lead">Personas dentro de la cobertura de cada estación, aunque otra les quede mejor. Prioridad relativa a la estación de mayor población: alta ≥ 66 %, media ≥ 33 %.</p><div id="tPrio"></div></div>
    <div class="card"><p class="eyebrow">Inversión</p><h3>Presupuesto estimado</h3>
     <p class="lead">Proporcional a las partidas del anteproyecto P178 (UF dic-2024), recalculado con el largo, las estaciones y los ángulos del trazado.</p><div id="tInv"></div></div>
-   <div class="card"><p class="eyebrow">Tiempos</p><h3>Puerta a puerta al centro</h3>
+   <div class="card"><p class="eyebrow">Tiempos</p><h3 id="titTiempos">Puerta a puerta al centro</h3>
     <p class="lead">Minutos, promedio ponderado por población de las manzanas que usan cada estación.</p><div id="tTiempos"></div>
-    <div class="nota">Bus: <span class="pend">pendiente — matriz H3 r9 encargada al motor de transporte público.</span></div></div>
+    <div class="nota" id="notaBus"></div></div>
    <div class="card"><p class="eyebrow">Geometría</p><h3>Tramos</h3><div id="tTramos"></div></div>
    <div class="card"><p class="eyebrow">Sobrevuelo</p><h3>Expropiación por escenario</h3>
     <p class="lead">E1: se expropia la faja. E2: norma complementada que permite el sobrevuelo (sólo estaciones).</p><div id="tExp"></div></div>
@@ -292,7 +292,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
 </script>
 <script>
 "use strict";
-const VERSION = "202610022059";
+const VERSION = "202610022152";
 let D=null, PID=null, INDICE=null;
 const $=id=>document.getElementById(id);
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -425,7 +425,12 @@ const incl=l=>l.incluida!==false;   // casilla «considerar en el proyecto» de 
 // =============================================================== cálculo
 const cacheIso=new Map();
 function iso(e){const k=[e.lon.toFixed(6),e.lat.toFixed(6),P.tobler.v,P.v_cam.v].join();if(!cacheIso.has(k))cacheIso.set(k,dijkstra(toXY(e.lon,e.lat),40*60));return cacheIso.get(k);}
+function tpEn(xy,r=40){if(!D.tp)return null;   // la estación conecta con toda la red dentro de su huella (≈ 51 × 24 m): mejor nodo a ≤ r
+ let b=null;const cx=Math.floor(xy[0]/CEL),cy=Math.floor(xy[1]/CEL),k=Math.ceil(r/CEL);
+ for(let i=cx-k;i<=cx+k;i++)for(let j=cy-k;j<=cy+k;j++)for(const n of (NIDX[i+","+j]||[])){const d=dist(xy,G.xy[n]),f=D.tp.nodo[n];if(d<=r&&f){const T=f[0]+d/V("v_cam");if(!b||T<b.T)b={T,f};}}
+ if(b)return b;const [nn,dd]=nodoCercano(xy);const f=nn>=0?D.tp.nodo[nn]:null;return f?{T:f[0]+dd/V("v_cam"),f}:null;}
 function calcular(){
+ if(D.tp)S.centro={lon:D.tp.destino[0],lat:D.tp.destino[1]};   // la ★ es el destino con que se midió el bus
  const R={est:[],tramos:[],mz:new Array(D.manzanas.length).fill(null)};
  S.lineas.forEach((l,li)=>{if(incl(l))l.est.forEach((e,ei)=>R.est.push({li,ei,e,xy:toXY(e.lon,e.lat)}));});
  if(!R.est.length)return R;
@@ -439,13 +444,15 @@ function calcular(){
  // cada red conexa (líneas paralelas sin transbordo entre sí) tiene su propio destino: la estación de menor egreso al centro
  const comp=new Array(n).fill(-1);let nc=0;for(let i=0;i<n;i++){if(comp[i]>=0)continue;const pila=[i];comp[i]=nc;while(pila.length){const u=pila.pop();for(const [v] of adj[u])if(comp[v]<0){comp[v]=nc;pila.push(v);}}nc++;}
  // destino «estacion_tren»: líneas alimentadoras; el viaje termina en la primera estación de la línea (andén del tren), sin egreso a pie
- const tren=D.meta.destino==="estacion_tren";if(tren)R.est.forEach(s=>{if(s.ei===0)s.egreso=0;});
+ const tren=D.meta.destino==="estacion_tren",integ=D.tp&&D.tp.integracion;
+ if(integ)R.est.forEach(s=>{const t=tpEn(s.xy);if(t){s.egreso=t.T;s.integ=t.f;}});   // desde la estación: tren, bus o caminata, lo más rápido
+ else if(tren)R.est.forEach(s=>{if(s.ei===0)s.egreso=0;});
  const dests=[];for(let c=0;c<nc;c++){let d=-1;R.est.forEach((s,i)=>{if(comp[i]!==c||(tren&&s.ei!==0))return;if(d<0||s.egreso<R.est[d].egreso)d=i;});dests.push(d);}
  R.dests=dests;R.dest=dests.reduce((a,b)=>R.est[b].egreso<R.est[a].egreso?b:a,dests[0]);
  const tv=new Array(n).fill(Infinity),tb=new Array(n).fill(0),vis=new Array(n).fill(false);dests.forEach(d=>tv[d]=0);
  for(let k=0;k<n;k++){let u=-1;for(let i=0;i<n;i++)if(!vis[i]&&(u<0||tv[i]<tv[u]))u=i;if(u<0||tv[u]===Infinity)break;vis[u]=true;
   for(const [v,t,esT] of adj[u]){const nt=tv[u]+t;if(nt<tv[v]){tv[v]=nt;tb[v]=tb[u]+(esT?t:0);}}}
- R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr:R.est[dests[comp[i]]].egreso,comp:comp[i],pob:0,hog:0,accSum:0,pobPot:0}));
+ R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr:R.est[dests[comp[i]]].egreso,egrDet:R.est[dests[comp[i]]].integ||null,comp:comp[i],pob:0,hog:0,accSum:0,pobPot:0,busPob:0,busSum:0,teleSum:0,ahoSum:0,pobGana:0,busC:[0,0,0,0,0]}));
  const isos=R.est.map(s=>iso(s.e));
  D.manzanas.forEach((m,mi)=>{let best=null;const mxy=toXY(m[0],m[1]);
   R.est.forEach((s,si)=>{const r=radioDe(s.e);let acc=isos[si][m[6]]+m[7]/V("v_cam");
@@ -453,7 +460,11 @@ function calcular(){
    else if(!(acc<=r/V("v_cam")))return;
    s.pobPot+=m[2]||0;   // población potencial: dentro de su cobertura, aunque otra estación le quede mejor
    if(!isFinite(s.viaje))return;const tot=acc+s.espera+s.viaje+s.transb+s.egr;if(!best||tot<best.tot)best={si,acc,tot};});
-  if(best){R.mz[mi]=best;const s=R.est[best.si],p=m[2]||0;s.pob+=p;s.hog+=m[3]||0;s.accSum+=best.acc*p;}});
+  if(best){R.mz[mi]=best;const s=R.est[best.si],p=m[2]||0;s.pob+=p;s.hog+=m[3]||0;s.accSum+=best.acc*p;
+   // situación base: transporte público actual desde la misma manzana al mismo destino
+   const fb=D.tp&&m[6]!=null?D.tp.nodo[m[6]]:null;
+   if(fb&&p>0){const tb=fb[0]+(m[7]||0)/1.1;best.bus=tb;s.busPob+=p;s.busSum+=tb*p;s.teleSum+=best.tot*p;s.ahoSum+=(tb-best.tot)*p;if(tb>best.tot)s.pobGana+=p;
+    s.busC[0]+=(fb[1]+(m[7]||0)/1.1)*p;for(let q=1;q<5;q++)s.busC[q]+=fb[q+1]*p;}}});
  return R;}
 
 function sobrevuelo(R){const O={fajas:[],huellas:[],ed:new Map(),lot:new Map()};
@@ -567,8 +578,8 @@ function dibujarLineas(){capLin.clearLayers();capCob.clearLayers();capGuia.clear
     hm.on("drag",ev=>{const p=ev.target.getLatLng();const rr=dist(toXY(p.lng,p.lat),toXY(e.lon,e.lat));ci.setRadius(rr);hm.setTooltipContent(`Radio ${fmt(rr)} m`);});
     hm.on("dragend",ev=>{const p=ev.target.getLatLng();e.r=Math.round(dist(toXY(p.lng,p.lat),toXY(e.lon,e.lat))/10)*10;render();});}
   });});
- if(S.centro){const m=L.marker([S.centro.lat,S.centro.lon],{draggable:true,icon:L.divIcon({className:"",html:`<div style="font-size:24px;line-height:24px;color:${css("--red")};text-shadow:0 0 3px ${css("--surface")}">★</div>`,iconSize:[24,24],iconAnchor:[12,12]})}).addTo(capLin);
-  m.bindTooltip("Destino: centro (arrastrable)");m.on("dragend",ev=>{const p=ev.target.getLatLng();S.centro={lat:p.lat,lon:p.lng};render();});}}
+ if(S.centro){const m=L.marker([S.centro.lat,S.centro.lon],{draggable:!D.tp,icon:L.divIcon({className:"",html:`<div style="font-size:24px;line-height:24px;color:${css("--red")};text-shadow:0 0 3px ${css("--surface")}">★</div>`,iconSize:[24,24],iconAnchor:[12,12]})}).addTo(capLin);
+  m.bindTooltip(D.tp?`Destino: ${D.tp.destino_nombre} (fijo: es el destino con que se midió el bus)`:"Destino: centro (arrastrable)");m.on("dragend",ev=>{const p=ev.target.getLatLng();S.centro={lat:p.lat,lon:p.lng};render();});}}
 
 function pintarMapa(){const C=COLS(),sat=baseActual==="sat";
  mzPoly.forEach((p,i)=>{const a=R.mz[i];if(!a){p.setStyle({fillOpacity:0,color:css("--line-2"),weight:.4});return;}const c=C[R.est[a.si].li%C.length];
@@ -590,6 +601,7 @@ const IC={
  angulo:'<path d="M4 20h16M4 20 16 6"/><path d="M10 20a6 6 0 0 0-1.8-4.3"/>',
  casa:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>',
  terreno:'<path d="M3 20h18M5 20l4-9 3 5 3-3 4 7"/><circle cx="16" cy="6" r="2"/>',
+ reloj:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/>',
  tren:'<path d="M2 5 22 3"/><rect x="7" y="8" width="10" height="9" rx="2"/><path d="M12 4v4M9 13h6"/>'};
 const ico=(k)=>`<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
 // =============================================================== paneles
@@ -624,21 +636,37 @@ function guardarTrazados(t){try{localStorage.setItem(claveT(),JSON.stringify(t))
 
 function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog=R.est.reduce((s,e)=>s+e.hog,0),L=R.tramos.reduce((s,t)=>s+t.L,0);
  const pobArea=D.manzanas.reduce((s,m)=>s+(m[8]?m[2]||0:0),0),pobCub=D.manzanas.reduce((s,m,i)=>s+(m[8]&&R.mz[i]?m[2]||0:0),0);
+ const AG=R.est.reduce((a,s)=>{a.p+=s.busPob;a.a+=s.ahoSum;a.b+=s.busSum;a.t+=s.teleSum;a.g+=s.pobGana;return a;},{p:0,a:0,b:0,t:0,g:0});
  const ang=[];S.lineas.filter(incl).forEach(l=>l.est.forEach((e,i)=>{const a=Math.abs(anguloEn(l,i));if(i>0&&i<l.est.length-1&&a>V("ang_lim"))ang.push(`${e.nombre} ${fmt(a,0)}°`);}));
  const ED=[0,0,0,0,0,0,0];D.manzanas.forEach((m,i)=>{if(R.mz[i]&&m[9])m[9].forEach((v,k)=>ED[k]+=v||0);});const edT=ED.reduce((a,b)=>a+b,0);
  const ET=["0–5","6–13","14–17","18–24","25–44","45–59","60 y más"];
  $("kpis").innerHTML=`<div class="kpi full dest">${ico("pers")}<div class="v">${fmt(pob)}</div><div class="l">personas beneficiadas (${fmt(hog)} hogares) · ${fmt(pobArea?100*pobCub/pobArea:0,0)} % del área de estudio</div>
    <details class="desp"><summary>Por tramo de edad</summary><table><tr><th>Edad</th><th>Personas</th><th>%</th></tr>${ET.map((t,k)=>`<tr><td>${t} años</td><td>${fmt(ED[k])}</td><td>${fmt(edT?100*ED[k]/edT:0,1)}</td></tr>`).join("")}</table><div class="nota">Censo 2024 por manzana; manzanas asignadas a alguna estación.</div></details></div>
+  ${D.tp&&AG.p?`<div class="kpi full">${ico("reloj")}<div class="v ${AG.a>0?"okv":"bad"}">${fmt(AG.a/AG.p/60,1)} min</div><div class="l">ahorro medio por viaje a ${D.tp.destino_nombre} frente al transporte público actual (${fmt(AG.b/AG.p/60,1)} → ${fmt(AG.t/AG.p/60,1)} min, punta mañana) · ${fmt(100*AG.g/AG.p,0)} % de los beneficiados ahorra</div></div>`:""}
   <div class="kpi full dest">${ico("plata")}<div class="v">${fmt(INV.E2)} UF</div><div class="l">inversión total estimada (con expropiación E2) · ≈ MM$ ${fmt(INV.E2*V("uf_clp")/1e6)} · con E1: ${fmt(INV.E1)} UF</div></div>
   <div class="kpi">${ico("regla")}<div class="v">${fmt(L/1000,2)} km</div><div class="l">${S.lineas.filter(l=>incl(l)&&l.est.length>1).length} línea(s) consideradas · ${R.est.length} estaciones${S.lineas.some(l=>!incl(l))?` · ${S.lineas.filter(l=>!incl(l)).length} fuera`:""}</div></div>
   <div class="kpi">${ico("angulo")}<div class="v ${ang.length?"warn":""}">${ang.length}</div><div class="l">quiebres &gt; ${V("ang_lim")}°${ang.length?": "+ang.join(", "):""}</div></div>
   <div class="kpi">${ico("casa")}<div class="v">${fmt(VAL.E1.viv)}</div><div class="l">viviendas bajo la faja · ≈ ${fmt(VAL.E1.pers)} personas</div></div>
   <div class="kpi">${ico("terreno")}<div class="v">${fmt(VAL.terr)}</div><div class="l">terrenos con vivienda sobrevolados</div></div>
   <div class="kpi full">${ico("tren")}<div class="v">${fmt(INV.nTor)} torres</div><div class="l">en la rasante (gálibo ≥ ${V("galibo")} m, vano ≤ ${V("vano_max")} m)${S.lineas.some(l=>incl(l)&&l.est.length>1&&rasante(l).altas)?' · <span class="bad">hay torres sobre la altura máxima</span>':""}</div></div>`;
- let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th></tr>`;
+ const conBus=!!D.tp&&AG.p>0,integ=D.tp&&D.tp.integracion,f1=x=>x==null||!isFinite(x)?"–":fmt(x/60,1);
+ let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>${integ?"Integr.":"Egr."}</th><th>Telef.</th>${conBus?"<th>Bus</th><th>Ahorro</th>":""}</tr>`;
  R.est.forEach((s,i)=>{const acc=s.pob?s.accSum/s.pob:null,tot=acc==null?null:acc+s.espera+s.viaje+s.transb+s.egr;
-  h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${R.dests.includes(i)?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
- $("tTiempos").innerHTML=h+"</table>";
+  const aho=s.busPob?s.ahoSum/s.busPob:null;
+  h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${R.dests.includes(i)?" ★":""}</td><td>${fmt(s.pob)}</td><td>${f1(acc)}</td><td>${f1(s.espera)}</td><td>${f1(s.viaje)}</td><td>${f1(s.transb)}</td><td>${f1(s.egr)}</td><td><b>${f1(tot)}</b></td>${conBus?`<td>${f1(s.busPob?s.busSum/s.busPob:null)}</td><td class="${aho>0?"okv":aho<0?"bad":""}">${f1(aho)}</td>`:""}</tr>`;});
+ if(conBus)h+=`<tr class="tot"><td>Total ponderado</td><td>${fmt(AG.p)}</td><td colspan="5"></td><td>${f1(AG.t/AG.p)}</td><td>${f1(AG.b/AG.p)}</td><td class="${AG.a>0?"okv":"bad"}">${f1(AG.a/AG.p)}</td></tr>`;
+ h+="</table>";
+ if(conBus){h+=`<details class="desp"><summary>Bus: desglose por estación</summary><table><tr><th>Estación</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th><th>Ahorran</th></tr>`+
+   R.est.map(s=>s.busPob?`<tr><td>${s.e.nombre}</td>${s.busC.map(x=>`<td>${f1(x/s.busPob)}</td>`).join("")}<td><b>${f1(s.busSum/s.busPob)}</b></td><td>${fmt(100*s.pobGana/s.busPob,0)} %</td></tr>`:"").join("")+
+   `</table><div class="nota">Mismas manzanas y mismo destino que el teleférico. Acceso a pie por la red peatonal con pendiente; espera = 0,5/Σ frecuencias de las líneas que convienen en la parada; viaje con velocidad GPS medida; transbordo = caminata entre paradas.</div></details>`;
+  if(integ){const ds=[...new Set(R.est.filter(s=>s.egrDet).map(s=>R.est.indexOf(s)))].filter(i=>R.dests.includes(i));
+   h+=`<details class="desp"><summary>Integración desde la estación ★ hasta ${D.tp.destino_nombre}</summary><table><tr><th>Estación ★</th><th>Caminata</th><th>Espera</th><th>Viaje</th><th>Transb.</th><th>Egreso</th><th>Total</th><th>Modo</th></tr>`+
+    ds.map(i=>{const s=R.est[i],f=s.integ;return `<tr><td>${s.e.nombre}</td><td>${f1(f[1])}</td><td>${f1(f[2])}</td><td>${f1(f[3])}</td><td>${f1(f[4])}</td><td>${f1(f[5])}</td><td><b>${f1(s.egreso)}</b></td><td>${f[3]>0?(f[6]?"tren":"bus"):"a pie"}</td></tr>`;}).join("")+
+    `</table><div class="nota">El teleférico deja en la estación ★; desde ahí se toma lo más rápido del transporte público actual (Merval, bus o caminata).</div></details>`;}}
+ $("tTiempos").innerHTML=h;
+ const cB=D.tp&&D.tp.control,dC=D.tp&&S.centro?dist(toXY(S.centro.lon,S.centro.lat),toXY(...D.tp.destino)):0;
+ $("titTiempos").textContent=`Puerta a puerta a ${D.tp?D.tp.destino_nombre:"el centro"}: teleférico contra bus`;
+ $("notaBus").innerHTML=D.tp?`Bus: ${D.tp.fuente}. Día laboral ${D.tp.periodo.replace("laboral ","")}. Contraste: la velocidad integrada por bloques da ${cB.contraste_ledger?fmt(cB.contraste_ledger.v_bloques_mediana,1):"–"} km/h contra ${cB.contraste_ledger?fmt(cB.contraste_ledger.v_ledger_mediana,1):"–"} km/h medidos por expedición (razón ${cB.contraste_ledger?fmt(cB.contraste_ledger.razon_mediana,2):"–"}).${dC>50?` <span class="bad">La ★ está a ${fmt(dC)} m de ${D.tp.destino_nombre}, destino con que se calculó el bus: el ahorro no es comparable.</span>`:""}`:`Bus: <span class="pend">sin tiempos de transporte público para este proyecto.</span>`;
  const mx=Math.max(1,...R.est.map(s=>s.pobPot)),orden=R.est.map((s,i)=>[s,i]).sort((a,b)=>b[0].pobPot-a[0].pobPot);
  $("tPrio").innerHTML=orden.map(([s],k)=>{const r=s.pobPot/mx,cl=r>=.66?"alta":r>=.33?"media":"baja";
   return `<div class="prio"><span><b class="num">${k+1}.</b> ${s.e.nombre}</span><span class="num" style="text-align:right">${fmt(s.pobPot)}</span><span class="tag ${cl}">${cl}</span>
