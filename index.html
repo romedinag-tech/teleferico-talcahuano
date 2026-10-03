@@ -142,6 +142,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
     <p class="lead">Guarda el trazado actual con un nombre y vuelve a cargarlo cuando quieras (se guarda en este navegador).</p>
     <div class="row"><input type="text" id="nomTraz" placeholder="Nombre del trazado"><button class="b pri" id="bGuardar">Guardar</button></div>
     <div class="lista" id="listaTraz"></div>
+    <div id="boxAlt" hidden><p class="eyebrow" style="margin-top:10px">Alternativas del proyecto</p><div class="lista" id="listaAlt"></div></div>
     <div class="row"><button class="b" id="bRef">Cargar referencial</button><button class="b" id="bVacio">Lienzo vacío</button></div>
     <div class="row"><button class="b" id="bExp">Exportar JSON</button><button class="b" id="bImp">Importar JSON</button><input type="file" id="fImp" accept=".json" hidden></div>
    </div>
@@ -182,7 +183,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
    <div class="card"><p class="eyebrow">Transparencia</p><h3>Método y fuentes</h3>
     <details class="method"><summary>Cómo se calcula</summary>
      <p><b>Cobertura.</b> Isócrona por la red peatonal OSM (incluye pasajes y escaleras) con velocidad corregida por pendiente (Tobler, normalizada a la velocidad en plano), o radio euclidiano. Cada manzana se asigna a la estación con menor tiempo total al centro.</p>
-     <p><b>Tiempo.</b> Acceso + ½ intervalo + viaje (largo inclinado / velocidad + tiempo de estación por tramo, como en el P246) + transbordos + egreso a pie desde la estación destino hasta ★.</p>
+     <p><b>Tiempo.</b> Acceso + ½ intervalo + viaje (largo inclinado / velocidad + tiempo de estación por tramo, como en el P246) + transbordos + egreso a pie desde la estación destino hasta ★ (en proyectos alimentadores del tren, como Valparaíso, el viaje termina en el andén de la estación de tren de cada línea, sin egreso). Si el proyecto tiene líneas sin transbordo entre sí (paralelas), cada red tiene su propia estación destino, marcada ★ en la tabla.</p>
      <p><b>Sobrevuelo.</b> Faja de ancho fijo bajo cada tramo y huella rectangular por estación. Viviendas por edificio: huella × pisos ÷ m² por vivienda del lote (multivivienda) o roles del lote (casas). Contraste con la DGC sobre el anteproyecto: 61 vs 64 viviendas en T1, 69 vs 74 terrenos en T2.</p>
      <p><b>Valores.</b> Medianas de UF/m² de escrituras SII F2890 2015–2025 del área (suelo: casas; cota baja: sitios eriazos). Casa afectada → lote completo (≤ 2.000 m²); condominio → cuota de suelo; resto → superficie intersectada.</p>
      <p><b>Inversión.</b> Costos unitarios del presupuesto del anteproyecto P178: electromecánica por tipo de estación, torres y cables por metro, cabinas por metro y estación; arquitectura, instalaciones eléctricas y obras urbanas por estación; recargo por ángulo según P246 Cuadro 1.2-5; GG y U 35 %, IVA 19 %.</p>
@@ -291,7 +292,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
 </script>
 <script>
 "use strict";
-const VERSION = "202610022015";
+const VERSION = "202610022059";
 let D=null, PID=null, INDICE=null;
 const $=id=>document.getElementById(id);
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -435,12 +436,16 @@ function calcular(){
  R.transb=[];for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)if(R.est[a].li!==R.est[b].li&&dist(R.est[a].xy,R.est[b].xy)<80){adj[a].push([b,V("t_transb"),1]);adj[b].push([a,V("t_transb"),1]);R.transb.push([a,b]);}
  const tC=dijkstra(toXY(S.centro.lon,S.centro.lat),40*60);
  R.est.forEach(s=>{const [nn,dd]=nodoCercano(s.xy);s.egreso=tC[nn]+dd/V("v_cam");if(!isFinite(s.egreso))s.egreso=dist(s.xy,toXY(S.centro.lon,S.centro.lat))*1.3/V("v_cam");});
- let dest=0;R.est.forEach((s,i)=>{if(s.egreso<R.est[dest].egreso)dest=i;});R.dest=dest;
- const tv=new Array(n).fill(Infinity),tb=new Array(n).fill(0),vis=new Array(n).fill(false);tv[dest]=0;
+ // cada red conexa (líneas paralelas sin transbordo entre sí) tiene su propio destino: la estación de menor egreso al centro
+ const comp=new Array(n).fill(-1);let nc=0;for(let i=0;i<n;i++){if(comp[i]>=0)continue;const pila=[i];comp[i]=nc;while(pila.length){const u=pila.pop();for(const [v] of adj[u])if(comp[v]<0){comp[v]=nc;pila.push(v);}}nc++;}
+ // destino «estacion_tren»: líneas alimentadoras; el viaje termina en la primera estación de la línea (andén del tren), sin egreso a pie
+ const tren=D.meta.destino==="estacion_tren";if(tren)R.est.forEach(s=>{if(s.ei===0)s.egreso=0;});
+ const dests=[];for(let c=0;c<nc;c++){let d=-1;R.est.forEach((s,i)=>{if(comp[i]!==c||(tren&&s.ei!==0))return;if(d<0||s.egreso<R.est[d].egreso)d=i;});dests.push(d);}
+ R.dests=dests;R.dest=dests.reduce((a,b)=>R.est[b].egreso<R.est[a].egreso?b:a,dests[0]);
+ const tv=new Array(n).fill(Infinity),tb=new Array(n).fill(0),vis=new Array(n).fill(false);dests.forEach(d=>tv[d]=0);
  for(let k=0;k<n;k++){let u=-1;for(let i=0;i<n;i++)if(!vis[i]&&(u<0||tv[i]<tv[u]))u=i;if(u<0||tv[u]===Infinity)break;vis[u]=true;
   for(const [v,t,esT] of adj[u]){const nt=tv[u]+t;if(nt<tv[v]){tv[v]=nt;tb[v]=tb[u]+(esT?t:0);}}}
- const egr=R.est[dest].egreso;
- R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr,pob:0,hog:0,accSum:0,pobPot:0}));
+ R.est.forEach((s,i)=>Object.assign(s,{viaje:tv[i]-tb[i],transb:tb[i],espera:V("intervalo")/2,egr:R.est[dests[comp[i]]].egreso,comp:comp[i],pob:0,hog:0,accSum:0,pobPot:0}));
  const isos=R.est.map(s=>iso(s.e));
  D.manzanas.forEach((m,mi)=>{let best=null;const mxy=toXY(m[0],m[1]);
   R.est.forEach((s,si)=>{const r=radioDe(s.e);let acc=isos[si][m[6]]+m[7]/V("v_cam");
@@ -604,6 +609,10 @@ function panelLineas(){const C=COLS();const ll=$("listaLineas");ll.innerHTML="";
   d.innerHTML=`<span class="num mut">${ei+1}</span><input type="text" value="${e.nombre}" aria-label="Nombre"><input type="number" value="${radioDe(e)}" step="10" aria-label="Radio"><span class="ang ${k}">${ei>0&&ei<l.est.length-1?fmt(Math.abs(a),0)+"°":"—"}</span><button class="x" title="Eliminar estación" aria-label="Eliminar estación">✕</button>`;
   const [n,r]=d.querySelectorAll("input");n.onchange=()=>{e.nombre=n.value;render();};r.onchange=()=>{e.r=+r.value;render();};
   d.querySelector("button").onclick=()=>{l.est.splice(ei,1);render();};le.appendChild(d);});}
+function panelAlternativas(){const al=D.alternativas||[],cont=$("listaAlt");$("boxAlt").hidden=!al.length;cont.innerHTML="";
+ al.forEach(a=>{const d=document.createElement("div");d.className="it";d.title=a.descripcion||"";
+  d.innerHTML=`<span style="flex:1">${a.nombre}<br><span class="mut" style="font-size:.7rem">${a.lineas.length} líneas · ${a.lineas.reduce((s,l)=>s+l.estaciones.length,0)} est.</span></span><button class="b">Cargar</button>`;
+  d.querySelector(".b").onclick=()=>{S.lineas=a.lineas.map(l=>({nombre:l.nombre,est:l.estaciones.map(e=>({lon:e[0],lat:e[1],nombre:e[2]}))}));S.activa=0;$("nomTraz").value=a.nombre;render();};cont.appendChild(d);});}
 function panelTrazados(){const t=trazadosGuardados(),cont=$("listaTraz");cont.innerHTML=Object.keys(t).length?"":`<p class="nota">Aún no hay trazados guardados en este proyecto.</p>`;
  Object.entries(t).sort((a,b)=>b[1].fecha.localeCompare(a[1].fecha)).forEach(([nom,v])=>{const d=document.createElement("div");d.className="it";
   d.innerHTML=`<span style="flex:1">${nom}<br><span class="mut" style="font-size:.7rem">${v.fecha.slice(0,16).replace("T"," ")} · ${v.lineas.reduce((s,l)=>s+l.est.length,0)} est.</span></span><button class="b">Cargar</button><button class="x" title="Borrar" aria-label="Borrar trazado">✕</button>`;
@@ -628,7 +637,7 @@ function panelResultados(){const C=COLS(),pob=R.est.reduce((s,e)=>s+e.pob,0),hog
   <div class="kpi full">${ico("tren")}<div class="v">${fmt(INV.nTor)} torres</div><div class="l">en la rasante (gálibo ≥ ${V("galibo")} m, vano ≤ ${V("vano_max")} m)${S.lineas.some(l=>incl(l)&&l.est.length>1&&rasante(l).altas)?' · <span class="bad">hay torres sobre la altura máxima</span>':""}</div></div>`;
  let h=`<table><tr><th>Estación</th><th>Pob.</th><th>Acc.</th><th>Esp.</th><th>Viaje</th><th>Transb.</th><th>Egr.</th><th>Total</th></tr>`;
  R.est.forEach((s,i)=>{const acc=s.pob?s.accSum/s.pob:null,tot=acc==null?null:acc+s.espera+s.viaje+s.transb+s.egr;
-  h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${i===R.dest?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
+  h+=`<tr><td><span class="sw" style="display:inline-block;background:${C[s.li%C.length]}"></span> ${s.e.nombre}${R.dests.includes(i)?" ★":""}</td><td>${fmt(s.pob)}</td><td>${fmt(acc/60,1)}</td><td>${fmt(s.espera/60,1)}</td><td>${fmt(s.viaje/60,1)}</td><td>${fmt(s.transb/60,1)}</td><td>${fmt(s.egr/60,1)}</td><td><b>${fmt(tot/60,1)}</b></td></tr>`;});
  $("tTiempos").innerHTML=h+"</table>";
  const mx=Math.max(1,...R.est.map(s=>s.pobPot)),orden=R.est.map((s,i)=>[s,i]).sort((a,b)=>b[0].pobPot-a[0].pobPot);
  $("tPrio").innerHTML=orden.map(([s],k)=>{const r=s.pobPot/mx,cl=r>=.66?"alta":r>=.33?"media":"baja";
@@ -738,7 +747,7 @@ async function abrirProyecto(pid){salirNuevo(false);if(vista3d)activar3D(false);
  $("badgeTxt").textContent=PUB()?"Versión pública · agregada":"Versión interna · datos prediales";
  $("tituloRes").textContent=D.meta.nombre;cacheIso.clear();prepararDatos();dibujarBaseProyecto();
  let ok=false;try{const j=JSON.parse(localStorage.getItem(`telef_actual_${pid}`)||"null");if(j&&j.lineas&&j.lineas.length){S=j;ok=true;}}catch(e){}
- panelTrazados();if(ok)render();else cargarReferencial();}
+ panelTrazados();panelAlternativas();if(ok)render();else cargarReferencial();}
 // nuevo proyecto
 let respaldoS=null;
 function salirNuevo(restituir){if(!nuevo)return;nuevo=null;capNuevo.clearLayers();const c=$("cardNuevo");if(c)c.remove();setModo(null);
