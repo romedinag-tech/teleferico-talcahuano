@@ -292,7 +292,7 @@ ol.pasos{padding-left:18px;margin:6px 0;font-size:.8rem;color:var(--ink-mid)}
 </script>
 <script>
 "use strict";
-const VERSION = "202610022152";
+const VERSION = "202610032158";
 let D=null, PID=null, INDICE=null;
 const $=id=>document.getElementById(id);
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -317,6 +317,7 @@ const P={
  est_largo:{v:51,l:"Estación: largo (m)",g:"pCost",n:"Tel-Thno.kmz"},
  est_ancho:{v:24,l:"Estación: ancho (m)",g:"pCost",n:"Tel-Thno.kmz"},
  h_est:{v:8,l:"Cable sobre estación (m)",g:"pCost",n:"supuesto"},
+ rasante_modo:{v:"galibo",l:"Ubicación de torres",g:"pCost",t:"sel",o:[["minimo","Mínimo de torres (más altas)"],["galibo","Apoyo donde el cable toca el gálibo"]],n:"Mínimo: el menor número de torres que cumple vano máximo, gálibo y altura máxima; cada torre se corre hacia el terreno alto (±20 % del vano). Sin catenaria: la altura es un mínimo geométrico. Gálibo: regla validada contra el P178 (30 vs 31 torres)"},
  galibo:{v:10,l:"Gálibo mínimo (m)",g:"pCost",n:"supuesto"},
  suelo:{v:"central",l:"Valor del suelo",g:"pCost",t:"sel",o:[["central","Central (casas)"],["bajo","Bajo (eriazos)"]]},
  vano_max:{v:320,l:"Vano máximo entre apoyos (m)",g:"pCost",n:"P178: vano mayor 310 m"},
@@ -387,7 +388,7 @@ const radioDe=e=>e.r||V("radio");
 // luego donde el vano excede el máximo. Sin catenaria: el cable entre apoyos es recto.
 const cacheRas=new Map();
 function rasante(l){
- const key=JSON.stringify(l.est.map(e=>[e.lon,e.lat]))+[P.h_est.v,P.galibo.v,P.vano_max.v,P.vano_min.v,P.est_largo.v].join();
+ const key=JSON.stringify(l.est.map(e=>[e.lon,e.lat]))+[P.h_est.v,P.galibo.v,P.vano_max.v,P.vano_min.v,P.est_largo.v,P.rasante_modo.v,P.h_torre_max.v].join();
  if(cacheRas.has(key))return cacheRas.get(key);
  const pts=[],estX=[],sop=[];let acum=0;
  for(let i=0;i<l.est.length-1;i++){const a=toXY(l.est[i].lon,l.est[i].lat),b=toXY(l.est[i+1].lon,l.est[i+1].lat),Lm=dist(a,b),n=Math.max(1,Math.ceil(Lm/10));
@@ -399,6 +400,23 @@ function rasante(l){
   const ap=[[x0,cota(estX[i][1].lon,estX[i][1].lat)+he,"est"],[x1,cota(estX[i+1][1].lon,estX[i+1][1].lat)+he,"est"]];
   const refinar=(A,B)=>{let peor=null;for(const p of seg){if(p[0]<=A[0]||p[0]>=B[0])continue;const zc=A[1]+(B[1]-A[1])*(p[0]-A[0])/(B[0]-A[0]),def=p[1]+g-zc;if(def>.05&&(!peor||def>peor.def))peor={p,def};}
    if(!peor)return [];const T=[peor.p[0],peor.p[1]+g,"torre",peor.p[1]];return [...refinar(A,T),T,...refinar(T,B)];};
+  // modo «mínimo de torres»: n torres (n mínimo por vano máximo), corridas al terreno alto y elevadas hasta el gálibo
+  const minimo=(A,B)=>{const Lr=B[0]-A[0],segT=pts.filter(p=>p[0]>A[0]+dz&&p[0]<B[0]-dz);let ult=null;
+   for(let n=Math.max(0,Math.ceil(Lr/V("vano_max"))-1);n<=80;n++){const sp=Lr/(n+1),w=Math.max(0,Math.min(.2*sp,(V("vano_max")-sp)/2));
+    const T=[];for(let k=1;k<=n;k++){const xc=A[0]+sp*k;let b=null;for(const p of segT)if(Math.abs(p[0]-xc)<=w&&(!b||p[1]>b[1]))b=p;const x=b?b[0]:xc,zt=terrenoEn(pts,x);T.push([x,zt+g,"torre",zt]);}
+    const cad=[A,...T,B];let peorG=0;
+    for(let it=0;it<300;it++){peorG=0;
+     for(let k=0;k<cad.length-1;k++){const P0=cad[k],P1=cad[k+1];let pe=null;
+      for(const p of seg){if(p[0]<=P0[0]||p[0]>=P1[0])continue;const zc=P0[1]+(P1[1]-P0[1])*(p[0]-P0[0])/(P1[0]-P0[0]),d=p[1]+g-zc;if(d>.05&&(!pe||d>pe.d))pe={d,x:p[0]};}
+      if(!pe)continue;peorG=Math.max(peorG,pe.d);const f=(pe.x-P0[0])/(P1[0]-P0[0]),t0=P0[2]==="torre",t1=P1[2]==="torre";
+      if(t0&&t1){const q=f*f+(1-f)*(1-f);P0[1]+=pe.d*(1-f)/q+.01;P1[1]+=pe.d*f/q+.01;}
+      else if(t1)P1[1]+=pe.d/Math.max(f,.05)+.01;else if(t0)P0[1]+=pe.d/Math.max(1-f,.05)+.01;else peorG=Infinity;}
+     if(peorG<=.05||peorG===Infinity)break;}
+    ult=T;if(peorG<=.05&&T.every(t=>t[1]-t[3]<=V("h_torre_max")))return T;}
+   return ult||[];};
+  let out;
+  if(P.rasante_modo.v==="minimo")out=[ap[0],...minimo(ap[0],ap[1]),ap[1]];
+  else{
   let cad=[ap[0],...refinar(ap[0],ap[1]),ap[1]];
   // fusiona apoyos más cercanos que el vano mínimo en uno más alto, y vuelve a exigir gálibo a ambos lados
   const deficit=(A,B)=>{let m=0;for(const p of seg){if(p[0]<=A[0]||p[0]>=B[0])continue;const zc=A[1]+(B[1]-A[1])*(p[0]-A[0])/(B[0]-A[0]);m=Math.max(m,p[1]+g-zc);}return m;};
@@ -409,8 +427,8 @@ function rasante(l){
    cad.splice(k,2,T);
    const nuevo=[cad[0]];for(let q=1;q<cad.length;q++){nuevo.push(...refinar(nuevo[nuevo.length-1],cad[q]),cad[q]);}cad=nuevo;}
   // vanos largos: apoyos intermedios sobre la misma recta (no cambian la rasante)
-  const out=[cad[0]];for(let k=1;k<cad.length;k++){const A=out[out.length-1],B=cad[k],nv=Math.ceil((B[0]-A[0])/V("vano_max"));
-   for(let j=1;j<nv;j++){const x=A[0]+(B[0]-A[0])*j/nv,zt=terrenoEn(pts,x);out.push([x,A[1]+(B[1]-A[1])*j/nv,"torre",zt]);}out.push(B);}
+  out=[cad[0]];for(let k=1;k<cad.length;k++){const A=out[out.length-1],B=cad[k],nv=Math.ceil((B[0]-A[0])/V("vano_max"));
+   for(let j=1;j<nv;j++){const x=A[0]+(B[0]-A[0])*j/nv,zt=terrenoEn(pts,x);out.push([x,A[1]+(B[1]-A[1])*j/nv,"torre",zt]);}out.push(B);}}
   out.slice(1,-1).forEach(t=>sop.push({x:t[0],top:t[1],ter:t[3],h:t[1]-t[3],tramo:i}));
   if(i===0)sop.push({x:x0,top:ap[0][1],est:true});sop.push({x:x1,top:ap[1][1],est:true});
  }
@@ -706,12 +724,18 @@ function perfil(){const svg=$("svgPerfil"),l=S.lineas[S.activa];svg.innerHTML=""
  s+=`<path d="M${X(0)},${Y(ra.cz(0)-V("galibo"))} ${pts.map(p=>`L${X(p[0])},${Y(ra.cz(p[0])-V("galibo"))}`).join(" ")} ${pts.slice().reverse().map(p=>`L${X(p[0])},${Y(ra.cz(p[0]))}`).join(" ")} Z" fill="${col}" fill-opacity=".08"/>`;
  s+=`<path d="M${X(0)},${Y(zmin)} ${pts.map(p=>`L${X(p[0])},${Y(p[1])}`).join(" ")} L${X(acum)},${Y(zmin)} Z" fill="${css("--terreno")}" fill-opacity=".25" stroke="${css("--terreno")}" stroke-width="1.2"/>`;
  edf.forEach(([x,z,h,hab])=>s+=`<rect x="${X(x)-2}" y="${Y(z+h)}" width="4" height="${Math.max(1,Y(z)-Y(z+h))}" fill="${hab?css("--viv"):css("--noviv")}"/>`);
- torres.forEach(t=>{const alta=t.h>V("h_torre_max");s+=`<line x1="${X(t.x)}" x2="${X(t.x)}" y1="${Y(t.ter)}" y2="${Y(t.top)}" stroke="${alta?css("--red"):col}" stroke-width="2.4"/><path d="M${X(t.x)-4},${Y(t.ter)} L${X(t.x)},${Y(t.ter)-6} L${X(t.x)+4},${Y(t.ter)} Z" fill="${alta?css("--red"):col}"/>`;});
+ // vanos: distancia en planta entre apoyos consecutivos (torres y estaciones), rotulada a media altura del cable
+ const apo=sop.slice().sort((a,b)=>a.x-b.x);let nT=0;
+ apo.forEach(a=>{if(!a.est)a.num=++nT;});
+ for(let k=0;k<apo.length-1;k++){const a=apo[k],b=apo[k+1],v=b.x-a.x,xm=(a.x+b.x)/2,ym=Y(ra.cz(xm))-5,larg=v>V("vano_max")+.5;
+  const cabe=X(b.x)-X(a.x)>30;
+  s+=`<g><title>Vano ${a.est?"estación":"T"+a.num} → ${b.est?"estación":"T"+b.num}: ${fmt(v)} m en planta</title>${cabe?`<text x="${X(xm)}" y="${ym}" font-size="9.5" text-anchor="middle" fill="${larg?css("--red"):ink}" font-family="IBM Plex Mono" paint-order="stroke" stroke="${css("--surface")}" stroke-width="3">${fmt(v)}</text>`:`<line x1="${X(xm)}" x2="${X(xm)}" y1="${ym}" y2="${ym+3}" stroke="${lo}"/>`}</g>`;}
+ torres.forEach(t=>{const alta=t.h>V("h_torre_max");s+=`<line x1="${X(t.x)}" x2="${X(t.x)}" y1="${Y(t.ter)}" y2="${Y(t.top)}" stroke="${alta?css("--red"):col}" stroke-width="2.4"/><path d="M${X(t.x)-4},${Y(t.ter)} L${X(t.x)},${Y(t.ter)-6} L${X(t.x)+4},${Y(t.ter)} Z" fill="${alta?css("--red"):col}"><title>Torre T${t.num} · progresiva ${fmt(t.x)} m · altura ${fmt(t.h,0)} m</title></path>${torres.length<=40?`<text x="${X(t.x)}" y="${Y(t.ter)+11}" font-size="8.5" text-anchor="middle" fill="${lo}" font-family="IBM Plex Mono">T${t.num}</text>`:""}`;});
  s+=`<polyline points="${sop.map(t=>`${X(t.x)},${Y(t.top)}`).join(" ")}" fill="none" stroke="${col}" stroke-width="2.2"/>`;
  const tr=l.nombre.match(/(T\d)$/);if(tr&&D.anteproyecto.torres){const L0=toXY(l.est[0].lon,l.est[0].lat);D.anteproyecto.torres.filter(t=>t[0]===tr[1]).forEach(t=>{const x=dist(toXY(t[2],t[3]),L0);s+=`<circle cx="${X(x)}" cy="${Y(t[6])}" r="2.6" fill="none" stroke="${ink}" stroke-width="1.2"/>`;});}
  estX.forEach(([x,e],i)=>{const a=anguloEn(l,i);s+=`<line x1="${X(x)}" x2="${X(x)}" y1="${mt}" y2="${H-mb}" stroke="${lo}" stroke-dasharray="2 3"/><text x="${X(x)+3}" y="${mt-4}" font-size="10" fill="${ink}" font-weight="600">${e.nombre}${i>0&&i<l.est.length-1?` ∠${fmt(Math.abs(a),0)}°`:""}</text>`;});
  svg.innerHTML=s;
- $("perfilTit").innerHTML=`Corte · ${l.nombre} · ${fmt(acum)} m en planta · rasante con <b>${torres.length} torres</b> (máx. ${fmt(ra.hMax,0)} m${ra.altas?`, <span class="bad">${ra.altas} sobre ${V("h_torre_max")} m</span>`:""}) · gálibo ≥ ${V("galibo")} m · vano ≤ ${V("vano_max")} m · terreno Copernicus GLO-30`+(tr&&D.anteproyecto.torres?` · círculos: cota de cable de las ${D.anteproyecto.torres.filter(t=>t[0]===tr[1]).length} torres P178`:"");}
+ $("perfilTit").innerHTML=`Corte · ${l.nombre} · ${fmt(acum)} m en planta · rasante con <b>${torres.length} torres</b> · vanos ${(()=>{const a=sop.slice().sort((p,q)=>p.x-q.x),v=a.slice(1).map((b,k)=>b.x-a[k].x);return v.length?`${fmt(Math.min(...v))}–${fmt(Math.max(...v))} m (medio ${fmt(v.reduce((x,y)=>x+y,0)/v.length)} m)`:"–";})()} (máx. ${fmt(ra.hMax,0)} m${ra.altas?`, <span class="bad">${ra.altas} sobre ${V("h_torre_max")} m</span>`:""}) · gálibo ≥ ${V("galibo")} m · vano ≤ ${V("vano_max")} m · terreno Copernicus GLO-30`+(tr&&D.anteproyecto.torres?` · círculos: cota de cable de las ${D.anteproyecto.torres.filter(t=>t[0]===tr[1]).length} torres P178`:"");}
 
 // =============================================================== vista 3D (MapLibre GL, carga diferida)
 let M3=null,vista3d=false,marcas3d=[],listo3d=false;
@@ -773,7 +797,7 @@ async function abrirProyecto(pid){salirNuevo(false);if(vista3d)activar3D(false);
  PID=pid;document.querySelectorAll(".projbar button[data-id]").forEach(b=>b.classList.toggle("on",b.dataset.id===pid));
  history.replaceState(null,"","?p="+pid);document.title=`${D.meta.nombre} · Trazados de teleférico`;
  $("badgeTxt").textContent=PUB()?"Versión pública · agregada":"Versión interna · datos prediales";
- $("tituloRes").textContent=D.meta.nombre;cacheIso.clear();prepararDatos();dibujarBaseProyecto();
+ $("tituloRes").textContent=D.meta.nombre;cacheIso.clear();cacheRas.clear();P.rasante_modo.v=D.meta.rasante_modo||"galibo";armarParams();prepararDatos();dibujarBaseProyecto();
  let ok=false;try{const j=JSON.parse(localStorage.getItem(`telef_actual_${pid}`)||"null");if(j&&j.lineas&&j.lineas.length){S=j;ok=true;}}catch(e){}
  panelTrazados();panelAlternativas();if(ok)render();else cargarReferencial();}
 // nuevo proyecto
